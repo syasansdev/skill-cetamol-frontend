@@ -43,11 +43,27 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     
     if (savedToken && savedUser) {
       setToken(savedToken);
-      const parsed = JSON.parse(savedUser);
-      if (parsed) {
-        parsed.photoUrl = cleanPhotoUrl(parsed.photoUrl);
+      try {
+        const parsed = JSON.parse(savedUser);
+        if (parsed) {
+          parsed.photoUrl = cleanPhotoUrl(parsed.photoUrl);
+        }
+        setUser(parsed);
+      } catch (err) {
+        console.error('Failed to parse cached user:', err);
       }
-      setUser(parsed);
+
+      // Check with server to verify account is still active and not removed by admin
+      api.get('/auth/me').then(res => {
+        if (res.data?.user) {
+          const fresh = { ...res.data.user, photoUrl: cleanPhotoUrl(res.data.user.photoUrl) };
+          setUser(fresh);
+          localStorage.setItem('exam_current_user', JSON.stringify(fresh));
+        }
+      }).catch(err => {
+        // If 401 or user deleted by admin, api interceptor handles redirection
+        console.warn('Session verification notice:', err?.response?.data?.message || err.message);
+      });
     }
     setLoading(false);
   }, []);
@@ -55,7 +71,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (email: string, password: string) => {
     setLoading(true);
     try {
-      const response = await api.post('/auth/login', { email, password });
+      const cleanEmail = (email || '').trim();
+      const cleanPassword = (password || '').trim();
+      const response = await api.post('/auth/login', { email: cleanEmail, password: cleanPassword });
       const { user: loggedInUser, token: authToken } = response.data;
       
       const cleanedUser = { ...loggedInUser, photoUrl: cleanPhotoUrl(loggedInUser.photoUrl) };

@@ -32,6 +32,8 @@ export const DashboardLayout: React.FC = () => {
       case 'admin':
         return [
           { label: 'Overview', tab: 'overview', icon: LayoutDashboard },
+          { label: 'Performance Analytics', tab: 'analytics', icon: TrendingUp },
+          { label: 'Assessment Studio', tab: 'central-exams', icon: FileText },
           { label: 'Academics', tab: 'academics', icon: BookOpen },
           { label: 'Faculty Management', tab: 'faculty', icon: GraduationCap },
           { label: 'Students Directory', tab: 'students', icon: Users },

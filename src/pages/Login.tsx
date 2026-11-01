@@ -307,7 +307,7 @@ export const Login: React.FC = () => {
 
     try {
       if (isLogin) {
-        const loggedUser = await login(email, password);
+        const loggedUser = await login((email || '').trim(), (password || '').trim());
         navigate(`/${loggedUser.role}/dashboard`);
       } else {
         // Registering

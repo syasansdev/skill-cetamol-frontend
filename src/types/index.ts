@@ -128,6 +128,17 @@ export interface ExamAttempt {
   markedForReview: string[]; // array of questionIds
 }
 
+export type PerformanceCategory = 'Exceptional' | 'Good' | 'Average' | 'Needs Improvement';
+
+export interface PerformanceThreshold {
+  id?: string;
+  category: PerformanceCategory;
+  minScore: number;
+  maxScore: number;
+  color: string;
+  description?: string;
+}
+
 export interface DetailedQuestionReview {
   id: string;
   text: string;
@@ -139,6 +150,8 @@ export interface DetailedQuestionReview {
   marksAwarded: number;
   points?: number;
   difficulty?: string;
+  timeSpentSeconds?: number;
+  questionNumber?: number;
 }
 
 export interface ExamResult {
@@ -156,14 +169,112 @@ export interface ExamResult {
   totalPoints: number;
   percentage: number;
   status: 'pass' | 'fail';
+  performanceCategory?: PerformanceCategory;
   answers: Record<string, string | string[]>;
   detailedQuestions?: DetailedQuestionReview[];
   timeTaken: number; // in seconds
+  totalActiveTimeSeconds?: number;
+  averageQuestionTimeSeconds?: number;
+  longestQuestionTime?: number;
+  shortestQuestionTime?: number;
+  questionTimings?: Record<string, number>;
   correctCount: number;
   wrongCount: number;
   skippedCount: number;
   submittedAt: string;
   rank?: number;
+}
+
+export interface TimeExtension {
+  id: string;
+  studentExamId: string;
+  studentId: string;
+  studentName?: string;
+  registerNumber?: string;
+  examId: string;
+  examTitle?: string;
+  extensionMinutes: number;
+  originalDeadline?: string;
+  newDeadline?: string;
+  reason?: string;
+  grantedById: string;
+  grantedByName?: string;
+  grantedByRole: string;
+  createdAt: string;
+}
+
+export interface StudentMasterAnalytics {
+  student: {
+    id: string;
+    name: string;
+    registerNumber: string;
+    college: string;
+    department: string;
+  };
+  kpiCards: {
+    totalTestsCompleted: number;
+    averageScore: number;
+    highestScore: number;
+    overallPerformanceCategory: string;
+    categoryColor: string;
+    averageTimePerQuestion: number;
+    performanceImprovement: number;
+  };
+  recentActivity: Array<{
+    id: string;
+    examId: string;
+    examTitle: string;
+    subjectName: string;
+    percentage: number;
+    category: string;
+    color: string;
+    date: string;
+    timeTakenSeconds: number;
+  }>;
+  performanceTrend: Array<{
+    date: string;
+    timestamp: string;
+    examTitle: string;
+    Score: number;
+    percentage: number;
+    category: string;
+    color: string;
+  }>;
+  assessmentComparison: Array<{
+    examTitle: string;
+    fullTitle: string;
+    score: number;
+    totalMarks: number;
+    category: string;
+    color: string;
+  }>;
+  categoryDistribution: Array<{
+    name: string;
+    count: number;
+    color: string;
+  }>;
+  subjectPerformance: Array<{
+    subjectName: string;
+    averageScore: number;
+    highestScore: number;
+    testsTaken: number;
+    category: string;
+    color: string;
+  }>;
+  strongestSubjects: any[];
+  weakestSubjects: any[];
+  areasForPractice: Array<{
+    subjectName: string;
+    currentScore: number;
+    category: string;
+    recommendation: string;
+  }>;
+  timeManagementTrend: Array<{
+    examTitle: string;
+    fullTitle: string;
+    avgSecondsPerQuestion: number;
+    totalDurationMinutes: number;
+  }>;
 }
 
 export interface DashboardStats {

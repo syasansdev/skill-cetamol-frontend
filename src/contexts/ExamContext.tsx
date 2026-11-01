@@ -8,6 +8,7 @@ interface ExamContextType {
   currentQuestionIndex: number;
   answers: Record<string, string | string[]>;
   markedForReview: string[];
+  questionTimings: Record<string, number>; // questionId -> active seconds spent
   timeRemaining: number; // in seconds
   isSaving: boolean;
   isExamActive: boolean;
@@ -82,6 +83,17 @@ export const ExamProvider: React.FC<ExamProviderProps> = ({ children }) => {
     return [];
   });
 
+  const [questionTimings, setQuestionTimings] = useState<Record<string, number>>(() => {
+    try {
+      const saved = sessionStorage.getItem('skill_active_exam_session');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return parsed.questionTimings || {};
+      }
+    } catch (e) {}
+    return {};
+  });
+
   const [timeRemaining, setTimeRemaining] = useState<number>(() => {
     try {
       const saved = sessionStorage.getItem('skill_active_exam_session');
@@ -116,11 +128,17 @@ export const ExamProvider: React.FC<ExamProviderProps> = ({ children }) => {
 
   const answersRef = useRef<any>(answers);
   const timeRemainingRef = useRef<number>(timeRemaining);
+  const questionTimingsRef = useRef<Record<string, number>>(questionTimings);
+  const activeQuestionStartTimeRef = useRef<number | null>(Date.now());
 
   // Sync state refs on changes
   useEffect(() => {
     answersRef.current = answers;
   }, [answers]);
+
+  useEffect(() => {
+    questionTimingsRef.current = questionTimings;
+  }, [questionTimings]);
 
   useEffect(() => {
     timeRemainingRef.current = timeRemaining;
@@ -136,6 +154,37 @@ export const ExamProvider: React.FC<ExamProviderProps> = ({ children }) => {
     }
   }, [timeRemaining, activeExam, isExamActive]);
 
+  // Flush active time spent on the current question to prevent lost seconds and avoid double counting
+  const flushCurrentQuestionTime = () => {
+    if (!activeExam || currentQuestionIndex < 0 || !activeExam.questions || !activeExam.questions[currentQuestionIndex]) {
+      return;
+    }
+
+    const currentQId = activeExam.questions[currentQuestionIndex].id;
+    if (activeQuestionStartTimeRef.current) {
+      const now = Date.now();
+      const elapsedSeconds = Math.max(0, Math.round((now - activeQuestionStartTimeRef.current) / 1000));
+      if (elapsedSeconds > 0) {
+        const updated = {
+          ...questionTimingsRef.current,
+          [currentQId]: (questionTimingsRef.current[currentQId] || 0) + elapsedSeconds
+        };
+        questionTimingsRef.current = updated;
+        setQuestionTimings(updated);
+
+        try {
+          const stored = sessionStorage.getItem('skill_active_exam_session');
+          if (stored) {
+            const parsed = JSON.parse(stored);
+            parsed.questionTimings = updated;
+            sessionStorage.setItem('skill_active_exam_session', JSON.stringify(parsed));
+          }
+        } catch (e) {}
+      }
+      activeQuestionStartTimeRef.current = now;
+    }
+  };
+
   // Fullscreen state listener
   useEffect(() => {
     const handleFullscreenChange = () => {
@@ -148,6 +197,23 @@ export const ExamProvider: React.FC<ExamProviderProps> = ({ children }) => {
     };
   }, []);
 
+  // Blur & Tab Visibility Tracker: Pause question timer when tab is hidden, resume when active
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        flushCurrentQuestionTime();
+        activeQuestionStartTimeRef.current = null;
+      } else if (document.visibilityState === 'visible' && isExamActive) {
+        activeQuestionStartTimeRef.current = Date.now();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isExamActive, currentQuestionIndex, activeExam]);
+
   // Timer countdown hook
   useEffect(() => {
     if (isExamActive && timeRemaining > 0) {
@@ -155,7 +221,7 @@ export const ExamProvider: React.FC<ExamProviderProps> = ({ children }) => {
         setTimeRemaining((prev) => {
           if (prev <= 1) {
             clearInterval(timerRef.current!);
-            // Handle automatic submit when timer hits 0
+            flushCurrentQuestionTime();
             showToast('Time is up! Submitting exam automatically.', 'warning');
             const totalTime = activeExam ? activeExam.duration * 60 : 0;
             submitExam(totalTime);
@@ -171,32 +237,49 @@ export const ExamProvider: React.FC<ExamProviderProps> = ({ children }) => {
     };
   }, [isExamActive, timeRemaining]);
 
-  // Reusable progress saver
+  // Reusable progress saver with time extension synchronization
   const saveProgress = async (currentAnswers: Record<string, string | string[]>, remaining: number) => {
     if (!activeExam) return;
     setIsSaving(true);
+    flushCurrentQuestionTime();
 
     if (!navigator.onLine) {
-      // Cache locally
       localStorage.setItem(`offline_exam_${activeExam.id}`, JSON.stringify({
         answers: currentAnswers,
-        timeRemaining: remaining
+        timeRemaining: remaining,
+        questionTimings: questionTimingsRef.current
       }));
       setIsSaving(false);
       return;
     }
 
     try {
-      await api.post(`/student/exams/${activeExam.id}/auto-save`, {
+      const res = await api.post(`/student/exams/${activeExam.id}/auto-save`, {
         answers: currentAnswers,
-        timeRemaining: remaining
+        timeRemaining: remaining,
+        questionTimings: questionTimingsRef.current
       });
+
+      // Synchronize time extension if granted by invigilator/admin
+      if (res.data) {
+        if (typeof res.data.timeRemaining === 'number') {
+          const serverRemaining = res.data.timeRemaining;
+          // If server remaining is more than 10s greater than local remaining, an extension occurred
+          if (serverRemaining > timeRemainingRef.current + 10) {
+            setTimeRemaining(serverRemaining);
+            timeRemainingRef.current = serverRemaining;
+            showToast(`Time extension granted by proctor! Total remaining: ${Math.round(serverRemaining / 60)} minutes.`, 'info');
+          }
+        }
+      }
+
       localStorage.removeItem(`offline_exam_${activeExam.id}`);
     } catch (err) {
       console.error('Auto-save failed:', err);
       localStorage.setItem(`offline_exam_${activeExam.id}`, JSON.stringify({
         answers: currentAnswers,
-        timeRemaining: remaining
+        timeRemaining: remaining,
+        questionTimings: questionTimingsRef.current
       }));
     } finally {
       setIsSaving(false);
@@ -238,6 +321,7 @@ export const ExamProvider: React.FC<ExamProviderProps> = ({ children }) => {
 
   const startExam = (exam: Exam) => {
     const initialAnswers = (exam as any).savedAnswers || {};
+    const initialTimings = (exam as any).savedTimings || {};
     const initialTime = (exam as any).timeRemaining !== undefined ? (exam as any).timeRemaining : (exam.duration || 30) * 60;
 
     let questions = [...(exam.questions || [])];
@@ -249,9 +333,14 @@ export const ExamProvider: React.FC<ExamProviderProps> = ({ children }) => {
 
     setActiveExam(newActiveExam);
     setCurrentQuestionIndex(0);
-    
+
     setAnswers(initialAnswers);
     answersRef.current = initialAnswers;
+
+    setQuestionTimings(initialTimings);
+    questionTimingsRef.current = initialTimings;
+    activeQuestionStartTimeRef.current = Date.now();
+
     setMarkedForReview([]);
     setTimeRemaining(initialTime);
     timeRemainingRef.current = initialTime;
@@ -263,13 +352,14 @@ export const ExamProvider: React.FC<ExamProviderProps> = ({ children }) => {
         activeExam: newActiveExam,
         currentQuestionIndex: 0,
         answers: initialAnswers,
+        questionTimings: initialTimings,
         markedForReview: [],
         timeRemaining: initialTime,
         isExamActive: true
       }));
     } catch (e) {}
-    
-    // Request fullscreen automatically for professional distraction-free UI
+
+    // Request fullscreen automatically for distraction-free UI
     const docEl = document.documentElement;
     if (docEl.requestFullscreen) {
       docEl.requestFullscreen().catch(() => {
@@ -279,15 +369,16 @@ export const ExamProvider: React.FC<ExamProviderProps> = ({ children }) => {
   };
 
   const saveAnswer = (questionId: string, answer: string | string[]) => {
+    flushCurrentQuestionTime();
+
     const updatedAnswers = {
       ...answersRef.current,
       [questionId]: answer
     };
-    
+
     setAnswers(updatedAnswers);
-    answersRef.current = updatedAnswers; // update ref immediately for sync
-    
-    // Save immediately after answer selection
+    answersRef.current = updatedAnswers;
+
     saveProgress(updatedAnswers, timeRemainingRef.current);
 
     try {
@@ -330,24 +421,30 @@ export const ExamProvider: React.FC<ExamProviderProps> = ({ children }) => {
 
   const nextQuestion = () => {
     if (activeExam && currentQuestionIndex < activeExam.questions.length - 1) {
+      flushCurrentQuestionTime();
       const nextIdx = currentQuestionIndex + 1;
       setCurrentQuestionIndex(nextIdx);
       updateStoredQuestionIndex(nextIdx);
+      activeQuestionStartTimeRef.current = Date.now();
     }
   };
 
   const prevQuestion = () => {
     if (currentQuestionIndex > 0) {
+      flushCurrentQuestionTime();
       const prevIdx = currentQuestionIndex - 1;
       setCurrentQuestionIndex(prevIdx);
       updateStoredQuestionIndex(prevIdx);
+      activeQuestionStartTimeRef.current = Date.now();
     }
   };
 
   const jumpToQuestion = (index: number) => {
     if (activeExam && index >= 0 && index < activeExam.questions.length) {
+      flushCurrentQuestionTime();
       setCurrentQuestionIndex(index);
       updateStoredQuestionIndex(index);
+      activeQuestionStartTimeRef.current = Date.now();
     }
   };
 
@@ -355,11 +452,11 @@ export const ExamProvider: React.FC<ExamProviderProps> = ({ children }) => {
     if (!activeExam) throw new Error('No active exam to submit');
 
     try {
+      flushCurrentQuestionTime();
       setIsExamActive(false);
       if (timerRef.current) clearInterval(timerRef.current);
       if (autoSaveTimerRef.current) clearInterval(autoSaveTimerRef.current);
 
-      // Exit fullscreen if active
       if (document.fullscreenElement) {
         document.exitFullscreen().catch(() => {});
       }
@@ -367,7 +464,8 @@ export const ExamProvider: React.FC<ExamProviderProps> = ({ children }) => {
       const currentAnswers = answersRef.current || answers;
       const response = await api.post(`/student/exams/${activeExam.id}/submit`, {
         answers: currentAnswers,
-        timeTaken // in seconds
+        timeTaken,
+        questionTimings: questionTimingsRef.current
       });
 
       showToast('Exam submitted successfully!', 'success');
@@ -377,7 +475,7 @@ export const ExamProvider: React.FC<ExamProviderProps> = ({ children }) => {
     } catch (error: any) {
       const msg = error.response?.data?.message || 'Error submitting exam. Please retry.';
       showToast(msg, 'error');
-      setIsExamActive(true); // resume active if fails
+      setIsExamActive(true);
       throw error;
     }
   };
@@ -411,6 +509,7 @@ export const ExamProvider: React.FC<ExamProviderProps> = ({ children }) => {
         currentQuestionIndex,
         answers,
         markedForReview,
+        questionTimings,
         timeRemaining,
         isSaving,
         isExamActive,
