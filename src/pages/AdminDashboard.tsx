@@ -1037,7 +1037,7 @@ export const AdminDashboard: React.FC = () => {
 
 
             <div className="stat-card">
-              <div className="stat-icon" style={{ color: '#16a34a', backgroundColor: '#dcfce7' }}>
+              <div className="stat-icon" style={{ color: 'var(--success)', backgroundColor: 'var(--success-bg)' }}>
                 <GraduationCap size={22} />
               </div>
               <div className="stat-info">
@@ -1047,7 +1047,7 @@ export const AdminDashboard: React.FC = () => {
             </div>
 
             <div className="stat-card">
-              <div className="stat-icon" style={{ color: '#9333ea', backgroundColor: '#f3e8ff' }}>
+              <div className="stat-icon" style={{ color: '#a855f7', backgroundColor: 'rgba(168, 85, 247, 0.15)' }}>
                 <FileText size={22} />
               </div>
               <div className="stat-info">
@@ -1057,8 +1057,8 @@ export const AdminDashboard: React.FC = () => {
             </div>
 
             <div className="stat-card">
-              <div className="stat-icon" style={{ color: '#ef4444', backgroundColor: '#fee2e2' }}>
-                <ShieldAlert size={22} style={{ color: '#ef4444' }} />
+              <div className="stat-icon" style={{ color: 'var(--danger)', backgroundColor: 'var(--danger-bg)' }}>
+                <ShieldAlert size={22} style={{ color: 'var(--danger)' }} />
               </div>
               <div className="stat-info">
                 <span className="stat-label">Locked Exams</span>
@@ -1067,7 +1067,7 @@ export const AdminDashboard: React.FC = () => {
             </div>
 
             <div className="stat-card">
-              <div className="stat-icon" style={{ color: '#0ea5e9', backgroundColor: '#e0f2fe' }}>
+              <div className="stat-icon" style={{ color: '#0284c7', backgroundColor: 'rgba(14, 165, 233, 0.15)' }}>
                 <BookOpen size={22} />
               </div>
               <div className="stat-info">
@@ -1077,7 +1077,7 @@ export const AdminDashboard: React.FC = () => {
             </div>
 
             <div className="stat-card">
-              <div className="stat-icon" style={{ color: '#f59e0b', backgroundColor: '#fef3c7' }}>
+              <div className="stat-icon" style={{ color: 'var(--warning)', backgroundColor: 'var(--warning-bg)' }}>
                 <SlidersHorizontal size={22} />
               </div>
               <div className="stat-info">
@@ -1087,7 +1087,7 @@ export const AdminDashboard: React.FC = () => {
             </div>
 
             <div className="stat-card">
-              <div className="stat-icon" style={{ color: '#10b981', backgroundColor: '#d1fae5' }}>
+              <div className="stat-icon" style={{ color: 'var(--success)', backgroundColor: 'var(--success-bg)' }}>
                 <Clock size={22} />
               </div>
               <div className="stat-info">
@@ -1099,7 +1099,7 @@ export const AdminDashboard: React.FC = () => {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '24px', marginBottom: '32px' }}>
+          <div className="grid-two-col" style={{ marginBottom: '32px' }}>
             <div className="card">
               <h3 className="card-title">Students by Department</h3>
               <div style={{ height: '300px' }}>
@@ -1746,9 +1746,9 @@ export const AdminDashboard: React.FC = () => {
                                   <span key={oIdx} style={{
                                     padding: '2px 6px',
                                     borderRadius: '4px',
-                                    backgroundColor: isCorrectOpt ? '#dcfce7' : 'var(--hover)',
-                                    color: isCorrectOpt ? '#16a34a' : 'var(--text-muted)',
-                                    border: isCorrectOpt ? '1px solid #16a34a' : '1px solid var(--border)'
+                                    backgroundColor: isCorrectOpt ? 'var(--success-bg)' : 'var(--hover)',
+                                    color: isCorrectOpt ? 'var(--success)' : 'var(--text-muted)',
+                                    border: isCorrectOpt ? '1px solid var(--success)' : '1px solid var(--border)'
                                   }}>
                                     {String.fromCharCode(65 + oIdx)}: {opt}
                                   </span>
@@ -1795,7 +1795,7 @@ export const AdminDashboard: React.FC = () => {
           UPLOAD & EXTRACT Q-PAPERS SUB-VIEW
           ========================================== */}
       {activeTab === 'qpapers' && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 1fr) minmax(400px, 2fr)', gap: '24px' }}>
+        <div className="grid-split-qpapers">
           {/* Upload Form Card */}
           <div className="card" style={{ height: 'fit-content' }}>
             <h3 className="card-title" style={{ marginBottom: '16px' }}>Upload Question Document</h3>
@@ -2115,15 +2115,15 @@ export const AdminDashboard: React.FC = () => {
                     <span style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)' }}>Total Records</span>
                     <strong style={{ fontSize: '20px' }}>{uploadSummary.totalRecords}</strong>
                   </div>
-                  <div style={{ padding: '16px', backgroundColor: '#dcfce7', color: '#16a34a', borderRadius: 'var(--radius)', textAlign: 'center' }}>
+                  <div style={{ padding: '16px', backgroundColor: 'var(--success-bg)', color: 'var(--success)', borderRadius: 'var(--radius)', textAlign: 'center' }}>
                     <span style={{ display: 'block', fontSize: '12px' }}>Successful Imports</span>
                     <strong style={{ fontSize: '20px' }}>{uploadSummary.successfulImports}</strong>
                   </div>
-                  <div style={{ padding: '16px', backgroundColor: '#fee2e2', color: '#dc2626', borderRadius: 'var(--radius)', textAlign: 'center' }}>
+                  <div style={{ padding: '16px', backgroundColor: 'var(--danger-bg)', color: 'var(--danger)', borderRadius: 'var(--radius)', textAlign: 'center' }}>
                     <span style={{ display: 'block', fontSize: '12px' }}>Failed / Invalid Records</span>
                     <strong style={{ fontSize: '20px' }}>{uploadSummary.failedImports}</strong>
                   </div>
-                  <div style={{ padding: '16px', backgroundColor: '#ffedd5', color: '#ea580c', borderRadius: 'var(--radius)', textAlign: 'center' }}>
+                  <div style={{ padding: '16px', backgroundColor: 'var(--warning-bg)', color: 'var(--warning)', borderRadius: 'var(--radius)', textAlign: 'center' }}>
                     <span style={{ display: 'block', fontSize: '12px' }}>Duplicate Records</span>
                     <strong style={{ fontSize: '20px' }}>{uploadSummary.duplicateRecords}</strong>
                   </div>
@@ -2147,7 +2147,7 @@ export const AdminDashboard: React.FC = () => {
                         </thead>
                         <tbody>
                           {uploadSummary.validationErrors.map((err: any, idx: number) => (
-                            <tr key={idx} style={{ backgroundColor: '#fff5f5' }}>
+                            <tr key={idx} style={{ backgroundColor: 'var(--danger-bg)' }}>
                               <td><strong>Row {err.row}</strong></td>
                               <td style={{ color: 'var(--danger)' }}>
                                 <ul style={{ margin: 0, paddingLeft: '16px' }}>
@@ -2330,7 +2330,7 @@ export const AdminDashboard: React.FC = () => {
                     style={facEmailError ? { borderColor: '#ef4444', boxShadow: '0 0 0 3px rgba(239,68,68,0.15)' } : {}}
                   />
                   {facEmailError && (
-                    <div style={{ marginTop: '6px', padding: '8px 12px', background: '#fef2f2', border: '1px solid #fecaca', borderRadius: '6px', color: '#dc2626', fontSize: '12.5px', lineHeight: '1.5' }}>
+                    <div style={{ marginTop: '6px', padding: '8px 12px', background: 'var(--danger-bg)', border: '1px solid var(--danger)', borderRadius: '6px', color: 'var(--danger)', fontSize: '12.5px', lineHeight: '1.5' }}>
                       ⚠️ {facEmailError}
                     </div>
                   )}

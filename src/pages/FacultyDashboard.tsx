@@ -815,7 +815,7 @@ export const FacultyDashboard: React.FC = () => {
             </div>
 
             <div className="stat-card">
-              <div className="stat-icon" style={{ color: '#16a34a', backgroundColor: '#dcfce7' }}>
+              <div className="stat-icon" style={{ color: 'var(--success)', backgroundColor: 'var(--success-bg)' }}>
                 <FileText size={22} />
               </div>
               <div className="stat-info">
@@ -825,7 +825,7 @@ export const FacultyDashboard: React.FC = () => {
             </div>
 
             <div className="stat-card">
-              <div className="stat-icon" style={{ color: '#9333ea', backgroundColor: '#f3e8ff' }}>
+              <div className="stat-icon" style={{ color: '#a855f7', backgroundColor: 'rgba(168, 85, 247, 0.15)' }}>
                 <Clock size={22} />
               </div>
               <div className="stat-info">
@@ -835,7 +835,7 @@ export const FacultyDashboard: React.FC = () => {
             </div>
 
             <div className="stat-card">
-              <div className="stat-icon" style={{ color: '#ea580c', backgroundColor: '#ffedd5' }}>
+              <div className="stat-icon" style={{ color: 'var(--warning)', backgroundColor: 'var(--warning-bg)' }}>
                 <Award size={22} />
               </div>
               <div className="stat-info">
@@ -845,7 +845,7 @@ export const FacultyDashboard: React.FC = () => {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '24px', marginBottom: '32px' }}>
+          <div className="grid-two-col" style={{ marginBottom: '32px' }}>
             <div className="card">
               <h3 className="card-title">Average Class Performance (%)</h3>
               <div style={{ height: '300px' }}>
@@ -1147,15 +1147,15 @@ export const FacultyDashboard: React.FC = () => {
                     <span style={{ display: 'block', fontSize: '12px', color: 'var(--text-muted)' }}>Total Records</span>
                     <strong style={{ fontSize: '20px' }}>{uploadSummary.totalRecords}</strong>
                   </div>
-                  <div style={{ padding: '16px', backgroundColor: '#dcfce7', color: '#16a34a', borderRadius: 'var(--radius)', textAlign: 'center' }}>
+                  <div style={{ padding: '16px', backgroundColor: 'var(--success-bg)', color: 'var(--success)', borderRadius: 'var(--radius)', textAlign: 'center' }}>
                     <span style={{ display: 'block', fontSize: '12px' }}>Successful Imports</span>
                     <strong style={{ fontSize: '20px' }}>{uploadSummary.successfulImports}</strong>
                   </div>
-                  <div style={{ padding: '16px', backgroundColor: '#fee2e2', color: '#dc2626', borderRadius: 'var(--radius)', textAlign: 'center' }}>
+                  <div style={{ padding: '16px', backgroundColor: 'var(--danger-bg)', color: 'var(--danger)', borderRadius: 'var(--radius)', textAlign: 'center' }}>
                     <span style={{ display: 'block', fontSize: '12px' }}>Failed / Invalid Records</span>
                     <strong style={{ fontSize: '20px' }}>{uploadSummary.failedImports}</strong>
                   </div>
-                  <div style={{ padding: '16px', backgroundColor: '#ffedd5', color: '#ea580c', borderRadius: 'var(--radius)', textAlign: 'center' }}>
+                  <div style={{ padding: '16px', backgroundColor: 'var(--warning-bg)', color: 'var(--warning)', borderRadius: 'var(--radius)', textAlign: 'center' }}>
                     <span style={{ display: 'block', fontSize: '12px' }}>Duplicate Records</span>
                     <strong style={{ fontSize: '20px' }}>{uploadSummary.duplicateRecords}</strong>
                   </div>
@@ -1179,7 +1179,7 @@ export const FacultyDashboard: React.FC = () => {
                         </thead>
                         <tbody>
                           {uploadSummary.validationErrors.map((err: any, idx: number) => (
-                            <tr key={idx} style={{ backgroundColor: '#fff5f5' }}>
+                            <tr key={idx} style={{ backgroundColor: 'var(--danger-bg)' }}>
                               <td><strong>Row {err.row}</strong></td>
                               <td style={{ color: 'var(--danger)' }}>
                                 <ul style={{ margin: 0, paddingLeft: '16px' }}>
@@ -1776,7 +1776,7 @@ export const FacultyDashboard: React.FC = () => {
           UPLOAD & EXTRACT Q-PAPERS TAB
           ========================================== */}
       {activeTab === 'qpapers' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '24px' }}>
+        <div className="grid-split-qpapers">
           {/* Upload Form Card */}
           <div className="card" style={{ height: 'fit-content' }}>
             <h3 className="card-title" style={{ marginBottom: '16px' }}>Upload Question Document</h3>

@@ -640,6 +640,38 @@ button, input, select, textarea {
   background-color: var(--bg-hover);
 }
 
+select.form-control {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+  padding-right: 36px !important;
+  cursor: pointer;
+}
+
+select.form-control::-ms-expand {
+  display: none;
+}
+
+[data-theme='dark'] select.form-control {
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--primary);
+  cursor: pointer;
+}
+
+[data-theme='dark'] input[type="date"]::-webkit-calendar-picker-indicator,
+[data-theme='dark'] input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+  filter: invert(0.8) brightness(1.2);
+  cursor: pointer;
+}
+
 select.form-control option {
   background-color: var(--bg-card);
   color: var(--text-main);
@@ -1386,8 +1418,32 @@ select.form-control option {
   100% { background-position: 0% 50%; }
 }
 
+/* Responsive Grid Helpers */
+.grid-two-col {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr;
+  gap: 24px;
+}
+
+.grid-two-col-equal {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+.grid-split-qpapers {
+  display: grid;
+  grid-template-columns: minmax(320px, 1fr) minmax(400px, 2fr);
+  gap: 24px;
+}
+
 /* Responsive Overrides */
 @media (max-width: 1024px) {
+  .grid-two-col,
+  .grid-two-col-equal,
+  .grid-split-qpapers {
+    grid-template-columns: 1fr !important;
+  }
   .app-container {
     flex-direction: column;
   }
@@ -1417,6 +1473,17 @@ select.form-control option {
   }
   .results-header-summary {
     grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 900px) {
+  .login-visual-panel {
+    display: none !important;
+  }
+  .login-form-panel {
+    padding: 32px 20px !important;
+    width: 100% !important;
+    flex: 1 !important;
   }
 }
 

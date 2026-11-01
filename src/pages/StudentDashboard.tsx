@@ -238,7 +238,7 @@ export const StudentDashboard: React.FC = () => {
             </div>
 
             <div className="stat-card">
-              <div className="stat-icon" style={{ color: '#10b981', backgroundColor: '#ecfdf5' }}>
+              <div className="stat-icon" style={{ color: 'var(--success)', backgroundColor: 'var(--success-bg)' }}>
                 <Award size={22} />
               </div>
               <div className="stat-info">
@@ -248,19 +248,19 @@ export const StudentDashboard: React.FC = () => {
             </div>
 
             <div className="stat-card">
-              <div className="stat-icon" style={{ color: '#3b82f6', backgroundColor: '#eff6ff' }}>
+              <div className="stat-icon" style={{ color: 'var(--primary)', backgroundColor: 'var(--selected)' }}>
                 <CheckCircle size={22} />
               </div>
               <div className="stat-info">
                 <span className="stat-label">Performance Classification</span>
-                <span className="stat-value" style={{ fontSize: '18px', color: analytics?.kpiCards?.categoryColor || '#3b82f6' }}>
+                <span className="stat-value" style={{ fontSize: '18px', color: analytics?.kpiCards?.categoryColor || 'var(--primary)' }}>
                   {analytics?.kpiCards?.overallPerformanceCategory || (avgScore >= 90 ? 'Exceptional' : avgScore >= 75 ? 'Good' : avgScore >= 50 ? 'Average' : 'Needs Improvement')}
                 </span>
               </div>
             </div>
 
             <div className="stat-card">
-              <div className="stat-icon" style={{ color: '#ea580c', backgroundColor: '#ffedd5' }}>
+              <div className="stat-icon" style={{ color: 'var(--warning)', backgroundColor: 'var(--warning-bg)' }}>
                 <Clock size={22} />
               </div>
               <div className="stat-info">
@@ -273,7 +273,7 @@ export const StudentDashboard: React.FC = () => {
           </div>
 
           {/* Quick Active & Upcoming Grid */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '24px' }}>
+          <div className="grid-two-col">
             <div className="card">
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <h3 className="card-title" style={{ margin: 0 }}>Available Exams (Ready to Take)</h3>
@@ -625,7 +625,7 @@ export const StudentDashboard: React.FC = () => {
           </div>
 
           {/* FEATURE 5: 5 REQUIRED RECHARTS VISUALIZATIONS */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: '24px' }}>
+          <div className="grid-two-col">
             
             {/* Chart 1: Performance Trend Line Chart */}
             <div className="card">
@@ -700,7 +700,7 @@ export const StudentDashboard: React.FC = () => {
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+          <div className="grid-two-col-equal">
             
             {/* Chart 2: Assessment Comparison Bar Chart */}
             <div className="card">
@@ -826,12 +826,12 @@ export const StudentDashboard: React.FC = () => {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {analytics?.areasForPractice && analytics.areasForPractice.length > 0 ? (
                   analytics.areasForPractice.map(a => (
-                    <div key={a.subjectName} style={{ padding: '10px 14px', backgroundColor: '#fef2f2', borderRadius: '6px', border: '1px solid #fee2e2' }}>
+                    <div key={a.subjectName} style={{ padding: '10px 14px', backgroundColor: 'var(--danger-bg)', borderRadius: '6px', border: '1px solid var(--border)' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                        <span style={{ fontWeight: 700, fontSize: '14px', color: '#991b1b' }}>{a.subjectName}</span>
-                        <strong style={{ color: '#991b1b', fontSize: '13px' }}>{a.currentScore}% current</strong>
+                        <span style={{ fontWeight: 700, fontSize: '14px', color: 'var(--danger)' }}>{a.subjectName}</span>
+                        <strong style={{ color: 'var(--danger)', fontSize: '13px' }}>{a.currentScore}% current</strong>
                       </div>
-                      <span style={{ fontSize: '12px', color: '#7f1d1d' }}>{a.recommendation}</span>
+                      <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{a.recommendation}</span>
                     </div>
                   ))
                 ) : (
