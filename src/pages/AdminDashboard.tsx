@@ -13,7 +13,7 @@ import {
 } from 'recharts';
 import { useToast } from '../contexts/ToastContext';
 import { useAuth } from '../contexts/AuthContext';
-import { User, Student, Faculty, Department, Course, Subject, Exam, Question } from '../types';
+import { User, Student, Faculty, Department, Course, Subject, Exam, Question, UploadedDocument } from '../types';
 import api from '../services/api';
 import { cleanPhotoUrl } from '../utils/imageHelper';
 import { ConsolidatedStudentAnalytics } from '../components/ConsolidatedStudentAnalytics';
@@ -46,6 +46,18 @@ export const AdminDashboard: React.FC = () => {
   const [uploadFile, setUploadFile] = useState<File | null>(null);
   const [uploadSummary, setUploadSummary] = useState<any | null>(null);
   const [uploadLoading, setUploadLoading] = useState<boolean>(false);
+
+  // Q-Papers Extractor states
+  const [uploadedDocuments, setUploadedDocuments] = useState<UploadedDocument[]>([]);
+  const [loadingQPapers, setLoadingQPapers] = useState<boolean>(false);
+  const [qPaperName, setQPaperName] = useState<string>('');
+  const [qPaperSubjectId, setQPaperSubjectId] = useState<string>('');
+  const [qPaperFile, setQPaperFile] = useState<File | null>(null);
+  const [qAnswerFile, setQAnswerFile] = useState<File | null>(null);
+  const [uploadingQPaper, setUploadingQPaper] = useState<boolean>(false);
+  const [showDocQuestionsModal, setShowDocQuestionsModal] = useState<boolean>(false);
+  const [selectedDocumentQuestions, setSelectedDocumentQuestions] = useState<any[]>([]);
+  const [activeDocForPreview, setActiveDocForPreview] = useState<UploadedDocument | null>(null);
 
   // Profile photo upload states
   const [profilePhotoUploading, setProfilePhotoUploading] = useState<boolean>(false);
@@ -175,8 +187,86 @@ export const AdminDashboard: React.FC = () => {
 
       const lockedRes = await api.get('/admin/locked-exams');
       setLockedExams(lockedRes.data);
+
+      try {
+        const docRes = await api.get('/admin/uploaded-qpapers');
+        setUploadedDocuments(docRes.data);
+      } catch (e) {
+        // optional
+      }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  const fetchUploadedQPapers = async () => {
+    setLoadingQPapers(true);
+    try {
+      const res = await api.get('/admin/uploaded-qpapers');
+      setUploadedDocuments(res.data);
+    } catch (err) {
+      console.error('Failed to fetch uploaded documents:', err);
+    } finally {
+      setLoadingQPapers(false);
+    }
+  };
+
+  const handleUploadQPaperSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!qPaperFile || !qPaperSubjectId || !qPaperName) {
+      showToast('Please fill all required fields and select a question file.', 'error');
+      return;
+    }
+    setUploadingQPaper(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', qPaperFile);
+      if (qAnswerFile) formData.append('answerFile', qAnswerFile);
+      formData.append('name', qPaperName);
+      formData.append('subjectId', qPaperSubjectId);
+
+      const res = await api.post('/admin/upload-qpaper', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      showToast(res.data.message || 'Question paper uploaded and parsed successfully!', 'success');
+      setQPaperName('');
+      setQPaperSubjectId('');
+      setQPaperFile(null);
+      setQAnswerFile(null);
+      const fileInput = document.getElementById('admin-qpaper-file-input') as HTMLInputElement;
+      if (fileInput) fileInput.value = '';
+      const ansInput = document.getElementById('admin-qpaper-ans-file-input') as HTMLInputElement;
+      if (ansInput) ansInput.value = '';
+      await fetchUploadedQPapers();
+      await fetchData();
+    } catch (err: any) {
+      showToast(err.response?.data?.message || 'Failed to upload and extract questions.', 'error');
+    } finally {
+      setUploadingQPaper(false);
+    }
+  };
+
+  const handleDeleteQPaper = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this document? This will also remove all questions extracted from it.')) return;
+    try {
+      await api.delete(`/admin/uploaded-qpapers/${id}`);
+      setUploadedDocuments(prev => prev.filter(d => d.id !== id));
+      showToast('Document and its questions deleted successfully.', 'success');
+      await fetchData();
+    } catch (err: any) {
+      showToast(err.response?.data?.message || 'Failed to delete document.', 'error');
+    }
+  };
+
+  const handleViewDocQuestionsClick = async (doc: UploadedDocument) => {
+    setActiveDocForPreview(doc);
+    setSelectedDocumentQuestions([]);
+    setShowDocQuestionsModal(true);
+    try {
+      const res = await api.get(`/admin/uploaded-qpapers/${doc.id}/questions`);
+      setSelectedDocumentQuestions(res.data);
+    } catch (err: any) {
+      showToast(err.response?.data?.message || 'Failed to load document questions.', 'error');
     }
   };
 
@@ -246,6 +336,9 @@ export const AdminDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchData();
+    if (activeTab === 'qpapers') {
+      fetchUploadedQPapers();
+    }
   }, [activeTab]);
 
   // Profile photo upload handler
@@ -1699,9 +1792,145 @@ export const AdminDashboard: React.FC = () => {
       )}
 
       {/* ==========================================
+          UPLOAD & EXTRACT Q-PAPERS SUB-VIEW
+          ========================================== */}
+      {activeTab === 'qpapers' && (
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 1fr) minmax(400px, 2fr)', gap: '24px' }}>
+          {/* Upload Form Card */}
+          <div className="card" style={{ height: 'fit-content' }}>
+            <h3 className="card-title" style={{ marginBottom: '16px' }}>Upload Question Document</h3>
+            <form onSubmit={handleUploadQPaperSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div className="form-group">
+                <label className="form-label">Document Display Name</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g., Mid-Term 2026 CS-401"
+                  className="form-control"
+                  value={qPaperName}
+                  onChange={e => setQPaperName(e.target.value)}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Subject</label>
+                <select
+                  required
+                  className="form-control"
+                  value={qPaperSubjectId}
+                  onChange={e => setQPaperSubjectId(e.target.value)}
+                >
+                  <option value="">Select a Subject</option>
+                  {subjects.map(s => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Pick Question File (.pdf, .docx, .csv)</label>
+                <input
+                  id="admin-qpaper-file-input"
+                  type="file"
+                  required
+                  accept=".pdf,.docx,.csv"
+                  className="form-control"
+                  onChange={e => setQPaperFile(e.target.files?.[0] || null)}
+                />
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+                  Supports PDF files, Microsoft Word (.docx), or comma-separated CSV spreadsheets.
+                </span>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Pick Answer Key File (Optional, .pdf, .docx, .csv, .txt)</label>
+                <input
+                  id="admin-qpaper-ans-file-input"
+                  type="file"
+                  accept=".pdf,.docx,.csv,.txt"
+                  className="form-control"
+                  onChange={e => setQAnswerFile(e.target.files?.[0] || null)}
+                />
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+                  Optional separate answer key document containing list of correct options (e.g., 1. A, 2. B).
+                </span>
+              </div>
+
+              <button
+                type="submit"
+                className="btn btn-primary"
+                disabled={uploadingQPaper}
+                style={{ alignSelf: 'flex-start', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <Upload size={16} />
+                {uploadingQPaper ? 'Parsing & Extracting...' : 'Upload & Extract Questions'}
+              </button>
+            </form>
+          </div>
+
+          {/* List of uploaded documents */}
+          <div className="card">
+            <h3 className="card-title" style={{ marginBottom: '20px' }}>Extracted Question Papers Registry</h3>
+            {loadingQPapers ? (
+              <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>
+                Loading document registry...
+              </div>
+            ) : uploadedDocuments.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-muted)' }}>
+                <Upload size={40} style={{ margin: '0 auto 16px', color: 'var(--text-muted)' }} />
+                <h4>No uploaded documents</h4>
+                <p style={{ fontSize: '13px' }}>Upload a PDF, Word, or CSV file using the form on the left to extract questions.</p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {uploadedDocuments.map(doc => (
+                  <div key={doc.id} style={{
+                    padding: '16px',
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius)',
+                    backgroundColor: 'var(--bg-card)'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px' }}>
+                      <div>
+                        <span className="badge badge-info" style={{ textTransform: 'uppercase', fontSize: '10px', marginBottom: '4px', display: 'inline-block' }}>
+                          {doc.subjectName}
+                        </span>
+                        <h4 style={{ fontSize: '16px', fontWeight: 700, margin: 0 }}>{doc.name}</h4>
+                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                          File: <a href={cleanPhotoUrl(doc.fileUrl)} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', fontWeight: 600 }}>{doc.fileUrl.split('/uploads/')[1]}</a> ({doc.fileType.toUpperCase()})
+                        </span>
+                      </div>
+                      <button
+                        className="btn btn-danger btn-sm"
+                        style={{ padding: '4px 8px', fontSize: '11px', backgroundColor: 'var(--danger-bg)', color: 'var(--danger)', border: 'none' }}
+                        onClick={() => handleDeleteQPaper(doc.id)}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '14px', borderTop: '1px solid var(--border)', paddingTop: '10px' }}>
+                      <span style={{ fontSize: '13px', fontWeight: 600 }}>
+                        <span style={{ color: 'var(--primary)' }}>{doc.questionCount}</span> questions extracted
+                      </span>
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => handleViewDocQuestionsClick(doc)}
+                      >
+                        View Extracted Questions
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ==========================================
           REPORTS & ANALYTICS SUB-VIEW
           ========================================== */}
-      {activeTab === 'reports' && (
+      {(activeTab === 'results' || activeTab === 'reports') && (
         <div className="card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
             <div>
@@ -2852,6 +3081,61 @@ export const AdminDashboard: React.FC = () => {
             </div>
           </div>
         </>
+      )}
+
+      {/* View Extracted Questions Modal */}
+      {showDocQuestionsModal && activeDocForPreview && (
+        <div className="modal-overlay" onClick={() => setShowDocQuestionsModal(false)}>
+          <div className="modal-content" style={{ maxWidth: '640px', width: '95%' }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 className="modal-title">Extracted Questions - {activeDocForPreview.name}</h3>
+              <button type="button" className="modal-close" onClick={() => setShowDocQuestionsModal(false)}>&times;</button>
+            </div>
+            <div className="modal-body" style={{ maxHeight: '60vh', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              {selectedDocumentQuestions.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)' }}>
+                  Loading parsed questions...
+                </div>
+              ) : (
+                selectedDocumentQuestions.map((q, idx) => (
+                  <div key={q.id} style={{
+                    padding: '14px',
+                    borderRadius: 'var(--radius)',
+                    border: '1px solid var(--border)',
+                    backgroundColor: 'var(--bg-app)'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <span style={{ fontWeight: 700, fontSize: '13px', color: 'var(--primary)' }}>Q{idx + 1} ({q.type.toUpperCase()})</span>
+                      <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{q.marks || 1} mark(s)</span>
+                    </div>
+                    <p style={{ margin: '0 0 10px 0', fontSize: '14px', fontWeight: 500 }}>{q.question}</p>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      {q.options?.map((opt: any, oIdx: number) => {
+                        const isCorrect = opt.isCorrect;
+                        return (
+                          <div key={opt.id || oIdx} style={{
+                            padding: '6px 10px',
+                            borderRadius: '4px',
+                            fontSize: '13px',
+                            backgroundColor: isCorrect ? 'var(--success-bg)' : 'transparent',
+                            color: isCorrect ? 'var(--success)' : 'inherit',
+                            border: `1px solid ${isCorrect ? 'var(--success)' : 'var(--border)'}`,
+                            fontWeight: isCorrect ? 600 : 400
+                          }}>
+                            {String.fromCharCode(65 + oIdx)}. {opt.option} {isCorrect && '✓'}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="modal-footer">
+              <button type="button" className="btn btn-primary" onClick={() => setShowDocQuestionsModal(false)}>Close Preview</button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
