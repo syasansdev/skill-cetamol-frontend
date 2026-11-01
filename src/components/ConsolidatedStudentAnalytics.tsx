@@ -100,6 +100,10 @@ export const ConsolidatedStudentAnalytics: React.FC<Props> = ({ userRole, userCo
   const [endDate, setEndDate] = useState<string>('');
   const [searchTerm, setSearchTerm] = useState<string>('');
 
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [pageSize, setPageSize] = useState<number>(10);
+
   // Drilldown Profile State
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [studentProfile, setStudentProfile] = useState<StudentProfile | null>(null);
@@ -151,6 +155,7 @@ export const ConsolidatedStudentAnalytics: React.FC<Props> = ({ userRole, userCo
   };
 
   useEffect(() => {
+    setCurrentPage(1);
     fetchData();
   }, [selectedCollege, selectedExam, selectedSubject, selectedCategory, startDate, endDate]);
 
@@ -181,6 +186,29 @@ export const ConsolidatedStudentAnalytics: React.FC<Props> = ({ userRole, userCo
       (s.collegeName && s.collegeName.toLowerCase().includes(term))
     );
   }, [data?.studentRecords, searchTerm]);
+
+  // Pagination calculations
+  const totalPages = Math.ceil(filteredStudents.length / pageSize) || 1;
+  const paginatedStudents = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredStudents.slice(start, start + pageSize);
+  }, [filteredStudents, currentPage, pageSize]);
+
+  const getPageNumbers = () => {
+    const pages: (number | string)[] = [];
+    if (totalPages <= 7) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (currentPage > 3) pages.push('...');
+      const start = Math.max(2, currentPage - 1);
+      const end = Math.min(totalPages - 1, currentPage + 1);
+      for (let i = start; i <= end; i++) pages.push(i);
+      if (currentPage < totalPages - 2) pages.push('...');
+      pages.push(totalPages);
+    }
+    return pages;
+  };
 
   // Export to CSV
   const handleExportCSV = () => {
@@ -429,7 +457,7 @@ export const ConsolidatedStudentAnalytics: React.FC<Props> = ({ userRole, userCo
           <p className="text-xs text-muted-foreground mb-4">Breakdown of students across the four performance tiers</p>
           
           {data?.categoryDistribution && data.categoryDistribution.some(c => c.count > 0) ? (
-            <div className="h-64 flex items-center justify-center">
+            <div style={{ height: '300px', width: '100%' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
@@ -437,7 +465,7 @@ export const ConsolidatedStudentAnalytics: React.FC<Props> = ({ userRole, userCo
                     dataKey="count"
                     nameKey="category"
                     cx="50%"
-                    cy="50%"
+                    cy="45%"
                     innerRadius={55}
                     outerRadius={85}
                     paddingAngle={4}
@@ -448,12 +476,12 @@ export const ConsolidatedStudentAnalytics: React.FC<Props> = ({ userRole, userCo
                   </Pie>
                   <Tooltip 
                     formatter={(val: any, name: any) => [`${val} students`, name]}
-                    contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: '8px', fontSize: '12px' }}
+                    contentStyle={{ backgroundColor: 'var(--bg-card, #1e293b)', borderColor: 'var(--border, #334155)', borderRadius: '8px', fontSize: '12px', color: '#f8fafc' }}
                   />
                   <Legend 
                     verticalAlign="bottom" 
-                    height={36} 
-                    formatter={(val) => <span style={{ fontSize: '12px', color: 'var(--foreground)' }}>{val}</span>}
+                    height={40} 
+                    formatter={(val) => <span style={{ fontSize: '12px', color: 'var(--text-main, #f8fafc)', margin: '0 4px' }}>{val}</span>}
                   />
                 </PieChart>
               </ResponsiveContainer>
@@ -472,21 +500,22 @@ export const ConsolidatedStudentAnalytics: React.FC<Props> = ({ userRole, userCo
           <p className="text-xs text-muted-foreground mb-4">Average student percentage scores by subject curriculum</p>
 
           {data?.subjectPerformance && data.subjectPerformance.length > 0 ? (
-            <div className="h-64">
+            <div style={{ height: '300px', width: '100%' }}>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data.subjectPerformance} margin={{ top: 10, right: 10, left: -20, bottom: 25 }}>
-                  <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
+                <BarChart data={data.subjectPerformance} margin={{ top: 10, right: 15, left: -10, bottom: 65 }}>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.15} vertical={false} />
                   <XAxis 
                     dataKey="subject" 
-                    tick={{ fontSize: 11 }} 
-                    angle={-20} 
+                    tick={{ fontSize: 11, fill: 'var(--text-muted, #94a3b8)' }} 
+                    angle={-25} 
                     textAnchor="end"
                     interval={0}
+                    height={65}
                   />
-                  <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} />
+                  <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: 'var(--text-muted, #94a3b8)' }} />
                   <Tooltip 
                     formatter={(val: any) => [`${val}%`, 'Average Score']}
-                    contentStyle={{ backgroundColor: 'var(--card)', borderColor: 'var(--border)', borderRadius: '8px', fontSize: '12px' }}
+                    contentStyle={{ backgroundColor: 'var(--bg-card, #1e293b)', borderColor: 'var(--border, #334155)', borderRadius: '8px', fontSize: '12px', color: '#f8fafc' }}
                   />
                   <Bar dataKey="averageScore" fill="#3b82f6" radius={[4, 4, 0, 0]} name="Average Score %" />
                 </BarChart>
@@ -510,14 +539,15 @@ export const ConsolidatedStudentAnalytics: React.FC<Props> = ({ userRole, userCo
               Review student-level performance metrics, test completions, and open detailed student profiles.
             </p>
           </div>
-          <div className="relative w-full sm:w-64">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <div style={{ position: 'relative', width: '100%', maxWidth: '280px' }}>
+            <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted, #94a3b8)', pointerEvents: 'none' }} />
             <input
               type="text"
               placeholder="Search student or reg no..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full text-xs rounded-lg border border-border bg-background pl-9 pr-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+              onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(1); }}
+              className="form-control"
+              style={{ paddingLeft: '38px', height: '38px', fontSize: '13px', width: '100%' }}
             />
           </div>
         </div>
@@ -526,40 +556,42 @@ export const ConsolidatedStudentAnalytics: React.FC<Props> = ({ userRole, userCo
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="border-b border-border bg-muted/40 text-muted-foreground font-semibold">
-                <th className="py-3 px-4">Student</th>
-                <th className="py-3 px-4">Register Number</th>
-                <th className="py-3 px-4">Institution</th>
-                <th className="py-3 px-4">Department</th>
-                <th className="py-3 px-4 text-center">Tests Completed</th>
-                <th className="py-3 px-4 text-center">Average Score</th>
-                <th className="py-3 px-4 text-center">Highest Score</th>
-                <th className="py-3 px-4 text-center">Classification</th>
-                <th className="py-3 px-4 text-right">Actions</th>
+                <th className="py-3 px-4" style={{ minWidth: '180px' }}>Student</th>
+                <th className="py-3 px-4" style={{ minWidth: '130px' }}>Register Number</th>
+                <th className="py-3 px-4" style={{ minWidth: '220px' }}>Institution</th>
+                <th className="py-3 px-4" style={{ minWidth: '200px' }}>Department</th>
+                <th className="py-3 px-4 text-center" style={{ minWidth: '100px' }}>Tests Completed</th>
+                <th className="py-3 px-4 text-center" style={{ minWidth: '100px' }}>Average Score</th>
+                <th className="py-3 px-4 text-center" style={{ minWidth: '100px' }}>Highest Score</th>
+                <th className="py-3 px-4 text-center" style={{ minWidth: '140px' }}>Classification</th>
+                <th className="py-3 px-4 text-right" style={{ minWidth: '120px' }}>Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border">
-              {filteredStudents.map((st) => (
+              {paginatedStudents.map((st) => (
                 <tr key={st.id} className="hover:bg-muted/30 transition-colors">
                   <td className="py-3 px-4">
-                    <div className="font-semibold text-foreground">{st.name}</div>
-                    <div className="text-[11px] text-muted-foreground">{st.email}</div>
+                    <div className="font-semibold text-foreground" style={{ fontSize: '13px' }}>{st.name}</div>
+                    <div className="text-[11px] text-muted-foreground" style={{ marginTop: '2px' }}>{st.email}</div>
                   </td>
                   <td className="py-3 px-4 font-mono font-medium text-foreground">
-                    {st.registerNumber}
+                    <code style={{ fontSize: '12px', background: 'rgba(255,255,255,0.06)', padding: '2px 6px', borderRadius: '4px', color: 'var(--primary, #38bdf8)' }}>
+                      {st.registerNumber}
+                    </code>
                   </td>
-                  <td className="py-3 px-4 text-muted-foreground">
+                  <td className="py-3 px-4 text-muted-foreground" style={{ fontSize: '12px', lineHeight: '1.4' }}>
                     {st.collegeName || 'N/A'}
                   </td>
-                  <td className="py-3 px-4 text-muted-foreground">
+                  <td className="py-3 px-4 text-muted-foreground" style={{ fontSize: '12px', lineHeight: '1.4' }}>
                     {st.departmentName || 'N/A'}
                   </td>
-                  <td className="py-3 px-4 text-center font-semibold text-foreground">
+                  <td className="py-3 px-4 text-center font-semibold text-foreground" style={{ fontSize: '13px' }}>
                     {st.testsCompleted}
                   </td>
-                  <td className="py-3 px-4 text-center font-bold text-foreground">
+                  <td className="py-3 px-4 text-center font-bold" style={{ fontSize: '13px', color: st.averageScore >= 75 ? '#10b981' : st.averageScore >= 50 ? '#f59e0b' : '#ef4444' }}>
                     {st.averageScore}%
                   </td>
-                  <td className="py-3 px-4 text-center text-muted-foreground">
+                  <td className="py-3 px-4 text-center text-muted-foreground" style={{ fontSize: '12px' }}>
                     {st.highestScore}%
                   </td>
                   <td className="py-3 px-4 text-center">
@@ -570,10 +602,11 @@ export const ConsolidatedStudentAnalytics: React.FC<Props> = ({ userRole, userCo
                   <td className="py-3 px-4 text-right">
                     <button
                       onClick={() => handleOpenStudentProfile(st.id)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                      className="btn btn-secondary btn-sm"
+                      style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '11px', padding: '5px 10px' }}
                     >
                       View Profile
-                      <ChevronRight className="w-3 h-3" />
+                      <ChevronRight size={13} />
                     </button>
                   </td>
                 </tr>
@@ -588,6 +621,102 @@ export const ConsolidatedStudentAnalytics: React.FC<Props> = ({ userRole, userCo
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Controls Bar */}
+        {filteredStudents.length > 0 && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '12px 20px',
+            borderTop: '1px solid var(--border)',
+            flexWrap: 'wrap',
+            gap: '12px',
+            backgroundColor: 'rgba(255, 255, 255, 0.02)'
+          }}>
+            <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+              Showing <span style={{ fontWeight: 600, color: 'var(--text-main, #f8fafc)' }}>
+                {(currentPage - 1) * pageSize + 1}
+              </span> to <span style={{ fontWeight: 600, color: 'var(--text-main, #f8fafc)' }}>
+                {Math.min(currentPage * pageSize, filteredStudents.length)}
+              </span> of <span style={{ fontWeight: 600, color: 'var(--text-main, #f8fafc)' }}>
+                {filteredStudents.length}
+              </span> students
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', color: 'var(--text-muted)' }}>
+                <span>Per page:</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+                  className="form-control"
+                  style={{ padding: '4px 8px', height: '32px', fontSize: '12px', width: 'auto' }}
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <button
+                  onClick={() => setCurrentPage(1)}
+                  disabled={currentPage === 1}
+                  className="btn btn-secondary btn-sm"
+                  style={{ padding: '4px 8px', height: '32px', opacity: currentPage === 1 ? 0.4 : 1 }}
+                  title="First Page"
+                >
+                  «
+                </button>
+                <button
+                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="btn btn-secondary btn-sm"
+                  style={{ padding: '4px 10px', height: '32px', opacity: currentPage === 1 ? 0.4 : 1 }}
+                  title="Previous Page"
+                >
+                  ‹
+                </button>
+
+                {getPageNumbers().map((p, idx) => (
+                  typeof p === 'number' ? (
+                    <button
+                      key={idx}
+                      onClick={() => setCurrentPage(p)}
+                      className={`btn btn-sm ${currentPage === p ? 'btn-primary' : 'btn-secondary'}`}
+                      style={{ minWidth: '32px', height: '32px', padding: '0 8px', fontWeight: currentPage === p ? 700 : 500 }}
+                    >
+                      {p}
+                    </button>
+                  ) : (
+                    <span key={idx} style={{ padding: '0 4px', color: 'var(--text-muted)' }}>...</span>
+                  )
+                ))}
+
+                <button
+                  onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages || totalPages === 0}
+                  className="btn btn-secondary btn-sm"
+                  style={{ padding: '4px 10px', height: '32px', opacity: (currentPage === totalPages || totalPages === 0) ? 0.4 : 1 }}
+                  title="Next Page"
+                >
+                  ›
+                </button>
+                <button
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={currentPage === totalPages || totalPages === 0}
+                  className="btn btn-secondary btn-sm"
+                  style={{ padding: '4px 8px', height: '32px', opacity: (currentPage === totalPages || totalPages === 0) ? 0.4 : 1 }}
+                  title="Last Page"
+                >
+                  »
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Drill-down Student Profile Modal */}
