@@ -253,7 +253,7 @@ export const CentralizedAssessmentStudio: React.FC = () => {
           {activeView !== 'list' && (
             <button
               onClick={() => { setActiveView('list'); setSelectedExamId(null); }}
-              className="px-3.5 py-2 text-xs font-semibold rounded-lg border border-border hover:bg-muted text-foreground transition-colors"
+              className="btn btn-secondary btn-sm"
             >
               Back to Assessments
             </button>
@@ -262,7 +262,7 @@ export const CentralizedAssessmentStudio: React.FC = () => {
           {activeView === 'list' && (
             <button
               onClick={() => { resetForm(); setActiveView('create'); }}
-              className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+              className="btn btn-primary btn-sm"
             >
               <Plus className="w-4 h-4" />
               Create Central Assessment
@@ -313,7 +313,8 @@ export const CentralizedAssessmentStudio: React.FC = () => {
                       <div className="flex items-center justify-end gap-1.5">
                         <button
                           onClick={() => openMonitoring(item.id)}
-                          className="btn btn-sm btn-outline-primary text-xs px-2.5 py-1 inline-flex items-center gap-1"
+                          className="btn btn-secondary btn-sm"
+                          style={{ padding: '4px 10px', fontSize: '12px' }}
                           title="Monitor Cross-Institution Activity"
                         >
                           <BarChart3 className="w-3.5 h-3.5" />
@@ -322,7 +323,8 @@ export const CentralizedAssessmentStudio: React.FC = () => {
                         {item.publishedStatus !== 'published' ? (
                           <button
                             onClick={() => handleTogglePublish(item, 'published')}
-                            className="btn btn-sm btn-success text-xs px-2.5 py-1"
+                            className="btn btn-primary btn-sm"
+                            style={{ padding: '4px 10px', fontSize: '12px', backgroundColor: '#16a34a' }}
                             title="Publish Assessment"
                           >
                             Publish
@@ -330,7 +332,8 @@ export const CentralizedAssessmentStudio: React.FC = () => {
                         ) : (
                           <button
                             onClick={() => handleTogglePublish(item, 'archived')}
-                            className="btn btn-sm btn-danger text-xs px-2.5 py-1"
+                            className="btn btn-secondary btn-sm"
+                            style={{ padding: '4px 10px', fontSize: '12px', color: 'var(--danger)', borderColor: 'var(--danger)' }}
                             title="Archive Assessment"
                           >
                             Archive
@@ -358,116 +361,117 @@ export const CentralizedAssessmentStudio: React.FC = () => {
         <form onSubmit={handleCreateAssessment} className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Section A: Assessment Metadata */}
-            <div className="p-4 rounded-xl border border-border bg-card space-y-4">
-              <h4 className="font-semibold text-sm text-foreground flex items-center gap-2">
+            <div className="card" style={{ padding: '24px', margin: 0 }}>
+              <h4 className="font-semibold text-sm text-foreground flex items-center gap-2" style={{ marginBottom: '16px' }}>
                 <FileText className="w-4 h-4 text-primary" />
                 Assessment Configuration
               </h4>
 
-              <div>
-                <label className="block text-xs font-semibold text-foreground mb-1">Assessment Title *</label>
+              <div className="form-group">
+                <label className="form-label">Assessment Title *</label>
                 <input
                   type="text"
                   required
                   placeholder="e.g., Statewide Engineering Diagnostic Assessment 2026"
                   value={formTitle}
                   onChange={(e) => setFormTitle(e.target.value)}
-                  className="w-full text-xs rounded-lg border border-border bg-background px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  className="form-control"
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-foreground mb-1">Description</label>
+              <div className="form-group">
+                <label className="form-label">Description</label>
                 <textarea
                   rows={2}
                   placeholder="Comprehensive diagnostic test covering fundamentals..."
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
-                  className="w-full text-xs rounded-lg border border-border bg-background px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  className="form-control"
                 />
               </div>
 
               <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-foreground mb-1">Subject</label>
+                <div className="form-group">
+                  <label className="form-label">Subject</label>
                   <input
                     type="text"
                     placeholder="e.g., Mathematics"
                     value={formSubject}
                     onChange={(e) => setFormSubject(e.target.value)}
-                    className="w-full text-xs rounded-lg border border-border bg-background px-2.5 py-1.5 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    className="form-control"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-foreground mb-1">Duration (Mins)</label>
+                <div className="form-group">
+                  <label className="form-label">Duration (Mins)</label>
                   <input
                     type="number"
                     min="5"
                     max="300"
                     value={formDuration}
                     onChange={(e) => setFormDuration(parseInt(e.target.value) || 60)}
-                    className="w-full text-xs rounded-lg border border-border bg-background px-2.5 py-1.5 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    className="form-control"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-foreground mb-1">Total Marks</label>
+                <div className="form-group">
+                  <label className="form-label">Total Marks</label>
                   <input
                     type="number"
                     min="1"
                     value={formTotalMarks}
                     onChange={(e) => setFormTotalMarks(parseInt(e.target.value) || 100)}
-                    className="w-full text-xs rounded-lg border border-border bg-background px-2.5 py-1.5 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    className="form-control"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-foreground mb-1">Start Date & Time (Optional)</label>
+                <div className="form-group">
+                  <label className="form-label">Start Date & Time (Optional)</label>
                   <input
                     type="datetime-local"
                     value={formStartDate}
                     onChange={(e) => setFormStartDate(e.target.value)}
-                    className="w-full text-xs rounded-lg border border-border bg-background px-2.5 py-1.5 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    className="form-control"
                   />
                 </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-foreground mb-1">End Date & Time (Optional)</label>
+                <div className="form-group">
+                  <label className="form-label">End Date & Time (Optional)</label>
                   <input
                     type="datetime-local"
                     value={formEndDate}
                     onChange={(e) => setFormEndDate(e.target.value)}
-                    className="w-full text-xs rounded-lg border border-border bg-background px-2.5 py-1.5 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                    className="form-control"
                   />
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-foreground mb-1">Assessment Instructions</label>
+              <div className="form-group">
+                <label className="form-label">Assessment Instructions</label>
                 <textarea
                   rows={3}
                   value={formInstructions}
                   onChange={(e) => setFormInstructions(e.target.value)}
-                  className="w-full text-xs font-mono rounded-lg border border-border bg-background px-3 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                  className="form-control font-mono text-xs"
                 />
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-foreground mb-1">Publishing State</label>
-                <div className="flex items-center gap-3">
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label">Publishing State</label>
+                <div className="flex items-center gap-4" style={{ marginTop: '4px' }}>
                   {(['published', 'scheduled', 'draft'] as const).map(st => (
-                    <label key={st} className="flex items-center gap-1.5 text-xs text-foreground cursor-pointer">
+                    <label key={st} className="flex items-center gap-2 text-xs text-foreground cursor-pointer" style={{ userSelect: 'none' }}>
                       <input
                         type="radio"
                         name="publishedStatus"
                         value={st}
                         checked={formStatus === st}
                         onChange={() => setFormStatus(st)}
+                        style={{ width: '16px', height: '16px' }}
                       />
-                      <span className="capitalize">{st}</span>
+                      <span className="capitalize" style={{ fontWeight: 500 }}>{st}</span>
                     </label>
                   ))}
                 </div>
@@ -475,7 +479,7 @@ export const CentralizedAssessmentStudio: React.FC = () => {
             </div>
 
             {/* Section B: Institution Assignment */}
-            <div className="p-4 rounded-xl border border-border bg-card space-y-4 flex flex-col justify-between">
+            <div className="card" style={{ padding: '24px', margin: 0, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="font-semibold text-sm text-foreground flex items-center gap-2">
@@ -485,55 +489,84 @@ export const CentralizedAssessmentStudio: React.FC = () => {
                   <button
                     type="button"
                     onClick={handleSelectAllColleges}
-                    className="text-xs text-primary hover:underline font-semibold"
+                    className="btn btn-secondary btn-sm"
+                    style={{ padding: '2px 8px', fontSize: '11px' }}
                   >
-                    {selectedCollegeIds.length === colleges.length ? 'Deselect All' : 'Select All 49 Colleges'}
+                    {selectedCollegeIds.length === colleges.length && colleges.length > 0 ? 'Deselect All' : `Select All ${colleges.length} Colleges`}
                   </button>
                 </div>
                 <p className="text-xs text-muted-foreground mb-3">
                   Select which colleges are authorized to administer this assessment. Candidates outside assigned colleges will be restricted.
                 </p>
 
-                <div className="max-h-80 overflow-y-auto space-y-1 rounded-lg border border-border p-2 bg-background">
-                  {colleges.map((c) => {
+                <div 
+                  className="overflow-y-auto space-y-1 p-2"
+                  style={{ 
+                    maxHeight: '340px', 
+                    borderRadius: 'var(--radius)', 
+                    border: '1px solid var(--border)', 
+                    backgroundColor: 'var(--bg-app)' 
+                  }}
+                >
+                  {colleges.map((c: any) => {
                     const isSelected = selectedCollegeIds.includes(c.id);
+                    const collegeTitle = c.collegeName || c.name || 'College';
                     return (
                       <div
                         key={c.id}
                         onClick={() => toggleCollege(c.id)}
-                        className={`flex items-center justify-between p-2 rounded-md text-xs cursor-pointer transition-colors ${
-                          isSelected ? 'bg-primary/10 border border-primary/30 text-primary font-medium' : 'hover:bg-muted text-foreground'
-                        }`}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          padding: '10px 12px',
+                          borderRadius: 'var(--radius)',
+                          cursor: 'pointer',
+                          transition: 'var(--transition)',
+                          backgroundColor: isSelected ? 'var(--selected)' : 'transparent',
+                          border: isSelected ? '1px solid var(--border-focus)' : '1px solid transparent'
+                        }}
                       >
-                        <div className="flex items-center gap-2">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                           <input
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => {}}
-                            className="rounded text-primary focus:ring-primary/40"
+                            style={{ width: '16px', height: '16px', cursor: 'pointer' }}
                           />
-                          <span>{c.name}</span>
+                          <span style={{ fontSize: '13px', fontWeight: isSelected ? 600 : 400, color: 'var(--text-main)' }}>
+                            {collegeTitle}
+                          </span>
                         </div>
-                        {c.code && <code className="text-[10px] text-muted-foreground">{c.code}</code>}
+                        {c.code && (
+                          <span className="badge badge-secondary" style={{ fontSize: '11px' }}>
+                            {c.code}
+                          </span>
+                        )}
                       </div>
                     );
                   })}
+                  {colleges.length === 0 && (
+                    <div style={{ textAlign: 'center', padding: '20px', color: 'var(--text-muted)', fontSize: '13px' }}>
+                      No colleges registered yet. Add colleges from the Academics tab.
+                    </div>
+                  )}
                 </div>
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-border">
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-border" style={{ marginTop: '20px' }}>
                 <button
                   type="button"
                   onClick={() => setActiveView('list')}
-                  className="px-4 py-2 text-xs font-semibold rounded-lg border border-border hover:bg-muted text-foreground transition-colors"
+                  className="btn btn-secondary"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="px-5 py-2 text-xs font-semibold rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+                  className="btn btn-primary"
                 >
                   {submitting ? 'Creating Assessment...' : 'Create & Assign Assessment'}
                 </button>

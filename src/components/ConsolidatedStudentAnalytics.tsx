@@ -242,36 +242,38 @@ export const ConsolidatedStudentAnalytics: React.FC<Props> = ({ userRole, userCo
           <button
             onClick={handleExportCSV}
             disabled={!filteredStudents.length}
-            className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-lg border border-border bg-card hover:bg-muted text-foreground transition-colors disabled:opacity-50"
+            className="btn btn-secondary btn-sm"
           >
             <Download className="w-4 h-4" />
             Export CSV
           </button>
           <button
             onClick={fetchData}
-            className="inline-flex items-center gap-2 px-3.5 py-2 text-sm font-medium rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            className="btn btn-primary btn-sm"
           >
+            <BarChart3 className="w-4 h-4" />
             Refresh
           </button>
         </div>
       </div>
 
       {/* Filter Bar */}
-      <div className="p-4 rounded-xl border border-border bg-card/60 backdrop-blur space-y-4">
-        <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+      <div className="card" style={{ padding: '20px', margin: 0 }}>
+        <div className="flex items-center gap-2 text-sm font-semibold text-foreground" style={{ marginBottom: '14px' }}>
           <Filter className="w-4 h-4 text-primary" />
           Filter Analytics
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '14px' }}>
           {/* College Filter (Visible for Super Admin or when user has no collegeId lock) */}
           {(!userCollegeId || userRole === 'admin') && colleges.length > 0 && (
-            <div>
-              <label className="text-xs font-medium text-muted-foreground block mb-1">Institution</label>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label className="form-label" style={{ fontSize: '12px', fontWeight: 600 }}>Institution</label>
               <select
                 value={selectedCollege}
                 onChange={(e) => setSelectedCollege(e.target.value)}
-                className="w-full text-xs rounded-lg border border-border bg-background px-2.5 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+                className="form-control"
+                style={{ padding: '8px 12px', fontSize: '13px' }}
               >
                 <option value="all">All Institutions</option>
                 {colleges.map(c => (
@@ -282,12 +284,13 @@ export const ConsolidatedStudentAnalytics: React.FC<Props> = ({ userRole, userCo
           )}
 
           {/* Exam Filter */}
-          <div>
-            <label className="text-xs font-medium text-muted-foreground block mb-1">Assessment</label>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label" style={{ fontSize: '12px', fontWeight: 600 }}>Assessment</label>
             <select
               value={selectedExam}
               onChange={(e) => setSelectedExam(e.target.value)}
-              className="w-full text-xs rounded-lg border border-border bg-background px-2.5 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="form-control"
+              style={{ padding: '8px 12px', fontSize: '13px' }}
             >
               <option value="all">All Assessments</option>
               {exams.map(ex => (
@@ -297,12 +300,13 @@ export const ConsolidatedStudentAnalytics: React.FC<Props> = ({ userRole, userCo
           </div>
 
           {/* Subject Filter */}
-          <div>
-            <label className="text-xs font-medium text-muted-foreground block mb-1">Subject</label>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label" style={{ fontSize: '12px', fontWeight: 600 }}>Subject</label>
             <select
               value={selectedSubject}
               onChange={(e) => setSelectedSubject(e.target.value)}
-              className="w-full text-xs rounded-lg border border-border bg-background px-2.5 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="form-control"
+              style={{ padding: '8px 12px', fontSize: '13px' }}
             >
               <option value="all">All Subjects</option>
               {subjects.map(s => (
@@ -312,12 +316,13 @@ export const ConsolidatedStudentAnalytics: React.FC<Props> = ({ userRole, userCo
           </div>
 
           {/* Performance Category Filter */}
-          <div>
-            <label className="text-xs font-medium text-muted-foreground block mb-1">Classification</label>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label" style={{ fontSize: '12px', fontWeight: 600 }}>Classification</label>
             <select
               value={selectedCategory}
               onChange={(e) => setSelectedCategory(e.target.value)}
-              className="w-full text-xs rounded-lg border border-border bg-background px-2.5 py-2 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="form-control"
+              style={{ padding: '8px 12px', fontSize: '13px' }}
             >
               <option value="all">All Categories</option>
               <option value="Exceptional">Exceptional (90-100%)</option>
@@ -328,98 +333,90 @@ export const ConsolidatedStudentAnalytics: React.FC<Props> = ({ userRole, userCo
           </div>
 
           {/* Date Start */}
-          <div>
-            <label className="text-xs font-medium text-muted-foreground block mb-1">From Date</label>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label" style={{ fontSize: '12px', fontWeight: 600 }}>From Date</label>
             <input
               type="date"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              className="w-full text-xs rounded-lg border border-border bg-background px-2.5 py-1.5 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="form-control"
+              style={{ padding: '8px 12px', fontSize: '13px' }}
             />
           </div>
 
           {/* Date End */}
-          <div>
-            <label className="text-xs font-medium text-muted-foreground block mb-1">To Date</label>
+          <div className="form-group" style={{ margin: 0 }}>
+            <label className="form-label" style={{ fontSize: '12px', fontWeight: 600 }}>To Date</label>
             <input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              className="w-full text-xs rounded-lg border border-border bg-background px-2.5 py-1.5 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/40"
+              className="form-control"
+              style={{ padding: '8px 12px', fontSize: '13px' }}
             />
           </div>
         </div>
       </div>
 
       {/* KPI Cards (Feature 7) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+      <div className="dashboard-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
         {/* Total Students */}
-        <div className="p-4 rounded-xl border border-border bg-card shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-xs font-medium uppercase tracking-wider">Total Students</span>
-            <Users className="w-4 h-4 text-primary" />
+        <div className="stat-card">
+          <div className="stat-icon" style={{ color: 'var(--primary)', backgroundColor: 'rgba(37, 99, 235, 0.15)' }}>
+            <Users size={22} />
           </div>
-          <div className="mt-3">
-            <span className="text-3xl font-bold text-foreground">
-              {loading ? '...' : (data?.totalStudents ?? 0)}
-            </span>
-            <p className="text-xs text-muted-foreground mt-1">Enrolled in scope</p>
+          <div className="stat-info">
+            <span className="stat-label">Total Students</span>
+            <span className="stat-value">{loading ? '...' : (data?.totalStudents ?? 0)}</span>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>Enrolled in scope</span>
           </div>
         </div>
 
         {/* Total Assessments */}
-        <div className="p-4 rounded-xl border border-border bg-card shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-xs font-medium uppercase tracking-wider">Total Assessments</span>
-            <BookOpen className="w-4 h-4 text-blue-500" />
+        <div className="stat-card">
+          <div className="stat-icon" style={{ color: '#0ea5e9', backgroundColor: 'rgba(14, 165, 233, 0.15)' }}>
+            <BookOpen size={22} />
           </div>
-          <div className="mt-3">
-            <span className="text-3xl font-bold text-foreground">
-              {loading ? '...' : (data?.totalAssessments ?? 0)}
-            </span>
-            <p className="text-xs text-muted-foreground mt-1">Scheduled or active</p>
+          <div className="stat-info">
+            <span className="stat-label">Total Assessments</span>
+            <span className="stat-value">{loading ? '...' : (data?.totalAssessments ?? 0)}</span>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>Scheduled or active</span>
           </div>
         </div>
 
         {/* Completed Assessments */}
-        <div className="p-4 rounded-xl border border-border bg-card shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-xs font-medium uppercase tracking-wider">Completed Tests</span>
-            <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+        <div className="stat-card">
+          <div className="stat-icon" style={{ color: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.15)' }}>
+            <CheckCircle2 size={22} />
           </div>
-          <div className="mt-3">
-            <span className="text-3xl font-bold text-foreground">
-              {loading ? '...' : (data?.completedAssessments ?? 0)}
-            </span>
-            <p className="text-xs text-muted-foreground mt-1">Evaluated submissions</p>
+          <div className="stat-info">
+            <span className="stat-label">Completed Tests</span>
+            <span className="stat-value">{loading ? '...' : (data?.completedAssessments ?? 0)}</span>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>Evaluated submissions</span>
           </div>
         </div>
 
         {/* Average Student Score */}
-        <div className="p-4 rounded-xl border border-border bg-card shadow-sm flex flex-col justify-between">
-          <div className="flex items-center justify-between text-muted-foreground">
-            <span className="text-xs font-medium uppercase tracking-wider">Average Score</span>
-            <TrendingUp className="w-4 h-4 text-purple-500" />
+        <div className="stat-card">
+          <div className="stat-icon" style={{ color: '#a855f7', backgroundColor: 'rgba(168, 85, 247, 0.15)' }}>
+            <TrendingUp size={22} />
           </div>
-          <div className="mt-3">
-            <span className="text-3xl font-bold text-foreground">
-              {loading ? '...' : `${data?.averageStudentScore ?? 0}%`}
-            </span>
-            <p className="text-xs text-muted-foreground mt-1">Across all completed tests</p>
+          <div className="stat-info">
+            <span className="stat-label">Average Score</span>
+            <span className="stat-value">{loading ? '...' : `${data?.averageStudentScore ?? 0}%`}</span>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>Across all completed tests</span>
           </div>
         </div>
 
         {/* Students Needing Improvement */}
-        <div className="p-4 rounded-xl border border-border bg-card shadow-sm flex flex-col justify-between border-rose-200 dark:border-rose-900/40 bg-rose-50/30 dark:bg-rose-950/10">
-          <div className="flex items-center justify-between text-rose-600 dark:text-rose-400">
-            <span className="text-xs font-medium uppercase tracking-wider">Need Improvement</span>
-            <AlertTriangle className="w-4 h-4 text-rose-500" />
+        <div className="stat-card" style={{ borderLeft: '3px solid #ef4444' }}>
+          <div className="stat-icon" style={{ color: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.15)' }}>
+            <AlertTriangle size={22} />
           </div>
-          <div className="mt-3">
-            <span className="text-3xl font-bold text-rose-600 dark:text-rose-400">
-              {loading ? '...' : (data?.studentsNeedingImprovement ?? 0)}
-            </span>
-            <p className="text-xs text-rose-600/80 dark:text-rose-400/80 mt-1">Require academic support</p>
+          <div className="stat-info">
+            <span className="stat-label" style={{ color: '#ef4444' }}>Need Improvement</span>
+            <span className="stat-value" style={{ color: '#ef4444' }}>{loading ? '...' : (data?.studentsNeedingImprovement ?? 0)}</span>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>Require academic support</span>
           </div>
         </div>
       </div>

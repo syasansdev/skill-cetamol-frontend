@@ -1,4 +1,19 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-border: var(--border);
+  --color-input: var(--border);
+  --color-ring: var(--border-focus);
+  --color-background: var(--bg-app);
+  --color-foreground: var(--text-main);
+  --color-card: var(--bg-card);
+  --color-card-foreground: var(--text-main);
+  --color-primary: var(--primary);
+  --color-primary-foreground: #ffffff;
+  --color-muted: var(--hover);
+  --color-muted-foreground: var(--text-muted);
+}
 
 /* ==========================================================================
    DESIGN TOKENS & SYSTEM VARIABLES

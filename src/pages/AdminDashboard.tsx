@@ -3,7 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   Users, GraduationCap, FileText, CheckCircle, Clock, 
   Trash2, Plus, Search, Settings, SlidersHorizontal, 
-  BookOpen, AlertCircle, Sparkles, Server, Check, X, ShieldAlert, Upload, Edit
+  BookOpen, AlertCircle, Sparkles, Server, Check, X, ShieldAlert, Upload, Edit,
+  Edit3, Key, Copy, Eye, EyeOff
 } from 'lucide-react';
 import { 
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, 
@@ -73,6 +74,27 @@ export const AdminDashboard: React.FC = () => {
   const [facDeptId, setFacDeptId] = useState<string>('');
   const [facSelectedSubjects, setFacSelectedSubjects] = useState<string[]>([]);
   const [facEmailError, setFacEmailError] = useState<string>('');
+
+  // Edit Faculty State
+  const [showEditFacultyModal, setShowEditFacultyModal] = useState<boolean>(false);
+  const [editingFaculty, setEditingFaculty] = useState<any | null>(null);
+  const [editFacName, setEditFacName] = useState<string>('');
+  const [editFacEmail, setEditFacEmail] = useState<string>('');
+  const [editFacEmployeeId, setEditFacEmployeeId] = useState<string>('');
+  const [editFacCollegeId, setEditFacCollegeId] = useState<string>('');
+  const [editFacDeptId, setEditFacDeptId] = useState<string>('');
+  const [editFacPassword, setEditFacPassword] = useState<string>('');
+  const [editFacStatus, setEditFacStatus] = useState<string>('active');
+  const [editFacEmailError, setEditFacEmailError] = useState<string>('');
+  const [editFacSaving, setEditFacSaving] = useState<boolean>(false);
+
+  // Reset Password State
+  const [showResetPasswordModal, setShowResetPasswordModal] = useState<boolean>(false);
+  const [resetTargetUser, setResetTargetUser] = useState<any | null>(null);
+  const [customResetPassword, setCustomResetPassword] = useState<string>('');
+  const [resetResultInfo, setResetResultInfo] = useState<{ password: string; emailSent: boolean; message: string } | null>(null);
+  const [isResettingPassword, setIsResettingPassword] = useState<boolean>(false);
+  const [copiedPassword, setCopiedPassword] = useState<boolean>(false);
 
   const [showCollegeModal, setShowCollegeModal] = useState<boolean>(false);
   const [collegeNameInput, setCollegeNameInput] = useState<string>('');
@@ -389,6 +411,88 @@ export const AdminDashboard: React.FC = () => {
         showToast(errData?.message || 'Error creating account.', 'error');
       }
     }
+  };
+
+  // Open Edit Faculty Modal
+  const handleOpenEditFaculty = (f: any) => {
+    setEditingFaculty(f);
+    setEditFacName(f.name || '');
+    setEditFacEmail(f.email || '');
+    setEditFacEmployeeId(f.facultyId || '');
+    setEditFacCollegeId(f.collegeId || '');
+    setEditFacDeptId(f.departmentId || '');
+    setEditFacPassword('');
+    setEditFacStatus(f.status || 'active');
+    setEditFacEmailError('');
+    setShowEditFacultyModal(true);
+  };
+
+  // Save Faculty Edits
+  const handleSaveEditFaculty = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingFaculty) return;
+    setEditFacSaving(true);
+    setEditFacEmailError('');
+    try {
+      await api.put(`/admin/faculty/${editingFaculty.id}`, {
+        name: editFacName,
+        email: editFacEmail,
+        facultyId: editFacEmployeeId,
+        collegeId: editFacCollegeId,
+        departmentId: editFacDeptId || null,
+        password: editFacPassword || undefined,
+        status: editFacStatus
+      });
+      showToast(`Faculty profile for ${editFacName} updated successfully.`, 'success');
+      setShowEditFacultyModal(false);
+      fetchData();
+    } catch (err: any) {
+      const errData = err.response?.data;
+      if (errData?.field === 'email') {
+        setEditFacEmailError(errData.message);
+      } else {
+        showToast(errData?.message || 'Error updating faculty account.', 'error');
+      }
+    } finally {
+      setEditFacSaving(false);
+    }
+  };
+
+  // Open Reset Password Modal
+  const handleOpenResetPasswordModal = (userItem: any) => {
+    setResetTargetUser(userItem);
+    setCustomResetPassword('');
+    setResetResultInfo(null);
+    setCopiedPassword(false);
+    setShowResetPasswordModal(true);
+  };
+
+  // Execute Password Reset
+  const handleExecuteResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetTargetUser) return;
+    setIsResettingPassword(true);
+    try {
+      const res = await api.post(`/admin/faculty/${resetTargetUser.id}/reset-password`, {
+        newPassword: customResetPassword ? customResetPassword.trim() : undefined
+      });
+      setResetResultInfo({
+        password: res.data.newPassword,
+        emailSent: res.data.emailSent,
+        message: res.data.message
+      });
+      showToast('Password reset successfully applied.', 'success');
+    } catch (err: any) {
+      showToast(err.response?.data?.message || 'Error resetting password.', 'error');
+    } finally {
+      setIsResettingPassword(false);
+    }
+  };
+
+  const handleCopyPassword = (pwd: string) => {
+    navigator.clipboard.writeText(pwd);
+    setCopiedPassword(true);
+    setTimeout(() => setCopiedPassword(false), 2500);
   };
 
   const handleCreateDept = async (e: React.FormEvent) => {
@@ -1203,6 +1307,7 @@ export const AdminDashboard: React.FC = () => {
                   <th>Employee ID</th>
                   <th>Name</th>
                   <th>Email</th>
+                  <th>College</th>
                   <th>Department</th>
                   <th>Assigned Subjects</th>
                   <th style={{ textAlign: 'right' }}>Actions</th>
@@ -1211,20 +1316,47 @@ export const AdminDashboard: React.FC = () => {
               <tbody>
                 {faculties.map(f => {
                   const dept = departments.find(d => d.id === f.departmentId);
+                  const clg = colleges.find(c => c.id === f.collegeId);
+                  const collegeDisplay = f.collegeName || clg?.collegeName || 'Not Assigned';
                   const assignedSubs = subjects.filter(s => f.subjects?.includes(s.id)).map(s => s.name).join(', ');
                   return (
                     <tr key={f.id}>
-                      <td><code>{f.facultyId}</code></td>
+                      <td><code>{f.facultyId || 'N/A'}</code></td>
                       <td style={{ fontWeight: 600 }}>{f.name}</td>
                       <td>{f.email}</td>
-                      <td>{dept ? dept.name : 'General'}</td>
-                      <td style={{ maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <td>
+                        <span style={{ fontWeight: 500, color: 'var(--primary, #3b82f6)' }}>
+                          {collegeDisplay}
+                        </span>
+                      </td>
+                      <td>{f.departmentName || (dept ? dept.name : 'General')}</td>
+                      <td style={{ maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {assignedSubs || 'None'}
                       </td>
                       <td style={{ textAlign: 'right' }}>
-                        <button className="btn btn-secondary btn-sm" onClick={() => handleDeleteUser(f.id)}>
-                          <Trash2 size={13} style={{ color: 'var(--danger)' }} />
-                        </button>
+                        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+                          <button 
+                            className="btn btn-secondary btn-sm" 
+                            title="Edit Faculty Details"
+                            onClick={() => handleOpenEditFaculty(f)}
+                          >
+                            <Edit3 size={14} style={{ color: 'var(--primary, #3b82f6)' }} />
+                          </button>
+                          <button 
+                            className="btn btn-secondary btn-sm" 
+                            title="Reset Faculty Password"
+                            onClick={() => handleOpenResetPasswordModal(f)}
+                          >
+                            <Key size={14} style={{ color: '#f59e0b' }} />
+                          </button>
+                          <button 
+                            className="btn btn-secondary btn-sm" 
+                            title="Delete Faculty Account"
+                            onClick={() => handleDeleteUser(f.id)}
+                          >
+                            <Trash2 size={14} style={{ color: 'var(--danger, #ef4444)' }} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -2016,6 +2148,210 @@ export const AdminDashboard: React.FC = () => {
               <div className="modal-footer" style={{ flexShrink: 0 }}>
                 <button type="button" className="btn btn-secondary" onClick={() => setShowFacultyModal(false)}>Cancel</button>
                 <button type="submit" className="btn btn-primary">Create Account</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Faculty Modal */}
+      {showEditFacultyModal && (
+        <div className="modal-overlay" onClick={() => { setShowEditFacultyModal(false); setEditFacEmailError(''); }}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '550px', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+            <form onSubmit={handleSaveEditFaculty} style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+              <div className="modal-header" style={{ flexShrink: 0 }}>
+                <h3 className="modal-title">Edit Faculty Member</h3>
+                <button type="button" className="modal-close" onClick={() => { setShowEditFacultyModal(false); setEditFacEmailError(''); }}>&times;</button>
+              </div>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px', overflowY: 'auto', maxHeight: '55vh', paddingRight: '8px' }}>
+                <div className="form-group">
+                  <label className="form-label">Full Name</label>
+                  <input 
+                    type="text" 
+                    required 
+                    className="form-control" 
+                    value={editFacName} 
+                    onChange={e => setEditFacName(e.target.value)} 
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Email Address</label>
+                  <input
+                    type="email"
+                    required
+                    className="form-control"
+                    value={editFacEmail}
+                    onChange={e => { setEditFacEmail(e.target.value); setEditFacEmailError(''); }}
+                    style={editFacEmailError ? { borderColor: '#ef4444', boxShadow: '0 0 0 3px rgba(239,68,68,0.15)' } : {}}
+                  />
+                  {editFacEmailError && (
+                    <div style={{ marginTop: '6px', padding: '8px 12px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid #ef4444', borderRadius: '6px', color: '#ef4444', fontSize: '12.5px' }}>
+                      ⚠️ {editFacEmailError}
+                    </div>
+                  )}
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Employee ID</label>
+                  <input 
+                    type="text" 
+                    required 
+                    className="form-control" 
+                    value={editFacEmployeeId} 
+                    onChange={e => setEditFacEmployeeId(e.target.value)} 
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">College</label>
+                  <select 
+                    className="form-control" 
+                    value={editFacCollegeId} 
+                    onChange={e => setEditFacCollegeId(e.target.value)}
+                  >
+                    <option value="">Select or assign college</option>
+                    {colleges.map(c => (
+                      <option key={c.id} value={c.id}>{c.collegeName}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Department</label>
+                  <select 
+                    className="form-control" 
+                    value={editFacDeptId} 
+                    onChange={e => setEditFacDeptId(e.target.value)}
+                  >
+                    <option value="">General / All Departments</option>
+                    {departments.map(d => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Account Status</label>
+                  <select 
+                    className="form-control" 
+                    value={editFacStatus} 
+                    onChange={e => setEditFacStatus(e.target.value)}
+                  >
+                    <option value="active">Active (Access Granted)</option>
+                    <option value="inactive">Inactive (Suspended)</option>
+                    <option value="pending">Pending Approval</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Change Password (Optional)</label>
+                  <input 
+                    type="password" 
+                    className="form-control" 
+                    placeholder="Leave blank to keep existing password" 
+                    value={editFacPassword} 
+                    onChange={e => setEditFacPassword(e.target.value)} 
+                  />
+                  <span style={{ fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+                    Only enter a new password if you wish to overwrite the current login credentials.
+                  </span>
+                </div>
+              </div>
+              <div className="modal-footer" style={{ flexShrink: 0 }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setShowEditFacultyModal(false)}>Cancel</button>
+                <button type="submit" className="btn btn-primary" disabled={editFacSaving}>
+                  {editFacSaving ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Reset Faculty Password Modal */}
+      {showResetPasswordModal && (
+        <div className="modal-overlay" onClick={() => setShowResetPasswordModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '480px' }}>
+            <form onSubmit={handleExecuteResetPassword}>
+              <div className="modal-header">
+                <h3 className="modal-title">Reset Faculty Password</h3>
+                <button type="button" className="modal-close" onClick={() => setShowResetPasswordModal(false)}>&times;</button>
+              </div>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ background: 'var(--hover)', padding: '12px 16px', borderRadius: '8px' }}>
+                  <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>Target Account</div>
+                  <div style={{ fontWeight: 600, fontSize: '15px' }}>{resetTargetUser?.name}</div>
+                  <div style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{resetTargetUser?.email}</div>
+                </div>
+
+                {!resetResultInfo ? (
+                  <>
+                    <div className="form-group">
+                      <label className="form-label">Set Custom Password (Optional)</label>
+                      <input 
+                        type="text" 
+                        className="form-control" 
+                        placeholder="e.g. faculty123 (Leave blank for default)" 
+                        value={customResetPassword} 
+                        onChange={e => setCustomResetPassword(e.target.value)} 
+                      />
+                      <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+                        <button 
+                          type="button" 
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => setCustomResetPassword('faculty123')}
+                        >
+                          Use "faculty123"
+                        </button>
+                        <button 
+                          type="button" 
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => setCustomResetPassword(Math.random().toString(36).slice(-8) + 'A1!')}
+                        >
+                          Generate Random
+                        </button>
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4' }}>
+                      Resetting the password takes effect immediately in the database. The user will be able to log in with this new password indefinitely until modified.
+                    </div>
+                  </>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', background: 'rgba(16, 185, 129, 0.1)', border: '1px solid rgba(16, 185, 129, 0.3)', padding: '16px', borderRadius: '8px' }}>
+                    <div style={{ fontWeight: 600, color: '#10b981', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <CheckCircle size={18} /> Password Updated Successfully
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>New Authoritative Password:</div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <code style={{ fontSize: '16px', fontWeight: 700, padding: '6px 12px', background: 'var(--surface, #1e293b)', borderRadius: '6px', color: 'var(--primary, #38bdf8)', flex: 1 }}>
+                          {resetResultInfo.password}
+                        </code>
+                        <button 
+                          type="button" 
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => handleCopyPassword(resetResultInfo.password)}
+                          style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
+                        >
+                          {copiedPassword ? <Check size={14} style={{ color: '#10b981' }} /> : <Copy size={14} />}
+                          {copiedPassword ? 'Copied!' : 'Copy'}
+                        </button>
+                      </div>
+                    </div>
+                    <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                      {resetResultInfo.emailSent 
+                        ? '✅ Email notification sent to faculty member.' 
+                        : '⚠️ Email could not be delivered. Please share the password directly with the faculty member.'}
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="modal-footer">
+                {!resetResultInfo ? (
+                  <>
+                    <button type="button" className="btn btn-secondary" onClick={() => setShowResetPasswordModal(false)}>Cancel</button>
+                    <button type="submit" className="btn btn-primary" disabled={isResettingPassword}>
+                      {isResettingPassword ? 'Resetting...' : 'Reset & Save Password'}
+                    </button>
+                  </>
+                ) : (
+                  <button type="button" className="btn btn-primary" onClick={() => setShowResetPasswordModal(false)}>Done</button>
+                )}
               </div>
             </form>
           </div>
