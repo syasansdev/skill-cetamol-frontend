@@ -48,7 +48,61 @@
   --success-bg: rgba(22, 163, 74, 0.15);
   --warning-bg: rgba(245, 158, 11, 0.15);
   --danger-bg: rgba(220, 38, 38, 0.15);
+
+  --background: #0b0f19;
+  --foreground: #f8fafc;
+  --card: #1e293b;
+  --card-foreground: #f8fafc;
+  --muted: #1e293b;
+  --muted-foreground: #94a3b8;
+  --input: #334155;
+  --ring: #60a5fa;
+  color-scheme: dark;
 }
+
+:root {
+  --background: #f8fafc;
+  --foreground: #0f172a;
+  --card: #ffffff;
+  --card-foreground: #0f172a;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --input: #e2e8f0;
+  --ring: #2563eb;
+}
+
+/* Dark Mode Form Element Hardening */
+[data-theme='dark'] select,
+[data-theme='dark'] input[type="text"],
+[data-theme='dark'] input[type="email"],
+[data-theme='dark'] input[type="password"],
+[data-theme='dark'] input[type="number"],
+[data-theme='dark'] input[type="date"],
+[data-theme='dark'] input[type="datetime-local"],
+[data-theme='dark'] input[type="search"],
+[data-theme='dark'] textarea {
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+  border-color: #334155 !important;
+  color-scheme: dark;
+}
+
+[data-theme='dark'] select option {
+  background-color: #1e293b !important;
+  color: #f8fafc !important;
+}
+
+/* Tailwind / Modern UI Token Helpers */
+.bg-background { background-color: var(--bg-app) !important; }
+.text-foreground { color: var(--text-main) !important; }
+.bg-card { background-color: var(--bg-card) !important; }
+.border-border { border-color: var(--border) !important; }
+.bg-muted { background-color: var(--hover) !important; }
+.bg-muted\/20 { background-color: rgba(30, 41, 59, 0.3) !important; }
+.bg-muted\/30 { background-color: rgba(30, 41, 59, 0.5) !important; }
+.bg-muted\/40 { background-color: rgba(30, 41, 59, 0.7) !important; }
+.text-muted-foreground { color: var(--text-muted) !important; }
+.border-input { border-color: var(--border) !important; }
 
 /* ==========================================================================
    RESET & BASE STYLES

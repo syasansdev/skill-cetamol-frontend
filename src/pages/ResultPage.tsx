@@ -170,10 +170,33 @@ export const ResultPage: React.FC = () => {
   const longestQTime = result.longestQuestionTime || (validTimes.length > 0 ? Math.max(...validTimes) : 0);
   const shortestQTime = result.shortestQuestionTime || (validTimes.length > 0 ? Math.min(...validTimes) : 0);
 
-  // Helper to test if a string represents a valid zero-based option index
-  const isNumericIndex = (val: string, max: number): boolean => {
-    const n = Number(val);
-    return !isNaN(n) && Number.isInteger(n) && n >= 0 && n < max;
+  // Helper to test if a student selection matches an option index, text, or letter
+  const matchesSelection = (selection: string, oIdx: number, optionText: string, optionsCount: number): boolean => {
+    if (!selection && selection !== '0') return false;
+    const trimmed = String(selection).trim();
+    
+    // 1. Direct index match ('0', '1', '2'...)
+    if (trimmed === String(oIdx)) return true;
+
+    // 2. Letter match ('A' -> 0, 'B' -> 1, 'C' -> 2, etc.)
+    if (trimmed.length === 1) {
+      const code = trimmed.toUpperCase().charCodeAt(0);
+      if (code >= 65 && code < 65 + Math.max(optionsCount, 26)) {
+        if (code - 65 === oIdx) return true;
+      }
+    }
+
+    // 3. Text match (case-insensitive, trimmed)
+    const cleanOption = (optionText || '').trim().toLowerCase();
+    const cleanSel = trimmed.toLowerCase();
+    if (cleanOption && cleanSel && cleanOption === cleanSel) return true;
+    
+    // Strip leading "A. ", "1. ", "(a) ", etc.
+    const strippedOption = cleanOption.replace(/^(?:[a-z0-9][\.\)\s\-]+|[q\d]+[\.\)\s\-]+)/i, '').trim();
+    const strippedSel = cleanSel.replace(/^(?:[a-z0-9][\.\)\s\-]+|[q\d]+[\.\)\s\-]+)/i, '').trim();
+    if (strippedOption && strippedSel && strippedOption === strippedSel) return true;
+
+    return false;
   };
 
   return (
@@ -583,10 +606,6 @@ export const ResultPage: React.FC = () => {
               const timeSpentSec = q.timeSpentSeconds || 0;
               const optionsCount = q.options?.length || 0;
 
-              // Check if options are indexed numbers (0, 1, 2...)
-              const hasNumericStudentChoice = studentOptRaw.some(s => isNumericIndex(s, optionsCount));
-              const hasNumericCorrectAnswer = correctOptRaw.some(c => isNumericIndex(c, optionsCount));
-
               const marksAwarded = typeof q.marksAwarded === 'number'
                 ? q.marksAwarded
                 : (q.isCorrect ? (q.points || 1) : 0);
@@ -645,17 +664,11 @@ export const ResultPage: React.FC = () => {
                   {q.options && q.options.length > 0 ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       {q.options.map((optText, oIdx) => {
-                        const optIndexStr = String(oIdx);
                         const cleanOptText = (optText || '').trim();
 
-                        // Exact index vs text matching
-                        const isStudentChoice = hasNumericStudentChoice
-                          ? studentOptRaw.includes(optIndexStr)
-                          : studentOptRaw.some(s => s.trim().toLowerCase() === cleanOptText.toLowerCase());
-
-                        const isCorrectOpt = hasNumericCorrectAnswer
-                          ? correctOptRaw.includes(optIndexStr)
-                          : correctOptRaw.some(c => c.trim().toLowerCase() === cleanOptText.toLowerCase());
+                        // Exact index, letter, or text matching
+                        const isStudentChoice = studentOptRaw.some(s => matchesSelection(s, oIdx, cleanOptText, optionsCount));
+                        const isCorrectOpt = correctOptRaw.some(c => matchesSelection(c, oIdx, cleanOptText, optionsCount));
 
                         let optionBg = 'var(--bg-card)';
                         let optionBorder = 'var(--border)';
@@ -694,7 +707,8 @@ export const ResultPage: React.FC = () => {
                             alignItems: 'center',
                             fontSize: '13px',
                             color: 'var(--text-main)',
-                            gap: '12px'
+                            gap: '12px',
+                            flexWrap: 'wrap'
                           }}>
                             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', flex: 1 }}>
                               <span style={{
