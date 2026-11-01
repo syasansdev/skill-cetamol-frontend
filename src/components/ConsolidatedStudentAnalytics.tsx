@@ -2,7 +2,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Users, Award, TrendingUp, AlertTriangle, BookOpen, 
   Search, Filter, Download, ArrowUpRight, CheckCircle2,
-  Calendar, Building, ChevronRight, X, Clock, BarChart3
+  Calendar, Building, ChevronRight, X, Clock, BarChart3,
+  Mail, GraduationCap
 } from 'lucide-react';
 import { 
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, 
@@ -721,126 +722,410 @@ export const ConsolidatedStudentAnalytics: React.FC<Props> = ({ userRole, userCo
 
       {/* Drill-down Student Profile Modal */}
       {selectedStudentId && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-card border border-border rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl p-6 relative">
-            <button
-              onClick={() => { setSelectedStudentId(null); setStudentProfile(null); }}
-              className="absolute top-5 right-5 p-1.5 rounded-full hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
+        <div 
+          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 sm:p-6 animate-in fade-in duration-200"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) {
+              setSelectedStudentId(null);
+              setStudentProfile(null);
+            }
+          }}
+        >
+          <div 
+            className="rounded-2xl w-full max-w-3xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden border"
+            style={{
+              backgroundColor: 'var(--bg-card, #1e293b)',
+              borderColor: 'var(--border, #334155)',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.08)'
+            }}
+          >
             {profileLoading || !studentProfile ? (
-              <div className="py-16 text-center text-muted-foreground">
-                <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-primary mb-3"></div>
-                <p>Loading student profile and assessment history...</p>
+              <div className="py-24 text-center text-muted-foreground flex flex-col items-center justify-center min-h-[300px]">
+                <div className="animate-spin rounded-full h-10 w-10 border-2 border-primary border-t-transparent mb-4"></div>
+                <p className="text-sm font-medium">Loading comprehensive student profile...</p>
               </div>
             ) : (
-              <div className="space-y-6">
+              <>
                 {/* Profile Header */}
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-xl font-bold text-foreground">{studentProfile.student.name}</h3>
-                      <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold border ${getCategoryBadgeClass(studentProfile.metrics.performanceCategory)}`}>
-                        {studentProfile.metrics.performanceCategory}
+                <div 
+                  className="p-6 border-b flex items-start justify-between gap-4"
+                  style={{ 
+                    borderColor: 'var(--border, #334155)', 
+                    backgroundColor: 'rgba(15, 23, 42, 0.55)' 
+                  }}
+                >
+                  <div className="flex items-center gap-4">
+                    {/* Student Initials Avatar */}
+                    <div 
+                      className="w-14 h-14 rounded-2xl flex items-center justify-center font-bold text-xl text-white shadow-lg flex-shrink-0"
+                      style={{
+                        background: 'linear-gradient(135deg, #3b82f6 0%, #6366f1 100%)',
+                        boxShadow: '0 4px 14px rgba(59, 130, 246, 0.35)',
+                        border: '1px solid rgba(255, 255, 255, 0.15)'
+                      }}
+                    >
+                      {studentProfile.student.name
+                        .split(' ')
+                        .filter(Boolean)
+                        .map(n => n[0])
+                        .slice(0, 2)
+                        .join('')
+                        .toUpperCase() || 'ST'}
+                    </div>
+
+                    <div className="space-y-1">
+                      <div className="flex flex-wrap items-center gap-3">
+                        <h3 className="text-2xl font-bold tracking-tight text-white">
+                          {studentProfile.student.name}
+                        </h3>
+                        <span className={`px-3 py-0.5 rounded-full text-xs font-semibold border ${getCategoryBadgeClass(studentProfile.metrics.performanceCategory)}`}>
+                          {studentProfile.metrics.performanceCategory}
+                        </span>
+                      </div>
+                      
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
+                        <span 
+                          className="font-mono font-medium px-2.5 py-0.5 rounded text-[11px] border"
+                          style={{ 
+                            backgroundColor: 'rgba(51, 65, 85, 0.5)', 
+                            borderColor: 'var(--border, #334155)',
+                            color: '#f8fafc' 
+                          }}
+                        >
+                          Reg No: {studentProfile.student.registerNumber}
+                        </span>
+                        <span className="text-slate-500">•</span>
+                        <span className="flex items-center gap-1.5 text-slate-300">
+                          <Mail className="w-3.5 h-3.5 text-blue-400 opacity-90" />
+                          {studentProfile.student.email}
+                        </span>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400 pt-0.5">
+                        <span className="flex items-center gap-1.5">
+                          <Building className="w-3.5 h-3.5 text-slate-400" />
+                          {studentProfile.student.college}
+                        </span>
+                        <span className="text-slate-500">•</span>
+                        <span className="flex items-center gap-1.5">
+                          <GraduationCap className="w-3.5 h-3.5 text-slate-400" />
+                          {studentProfile.student.department}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Close Button */}
+                  <button
+                    onClick={() => { setSelectedStudentId(null); setStudentProfile(null); }}
+                    className="p-2.5 rounded-xl text-slate-400 hover:text-white transition-all flex-shrink-0 cursor-pointer border hover:border-slate-500"
+                    style={{ 
+                      backgroundColor: 'rgba(51, 65, 85, 0.4)',
+                      borderColor: 'var(--border, #334155)'
+                    }}
+                    title="Close Profile"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                {/* Scrollable Content Body */}
+                <div className="p-6 space-y-6 overflow-y-auto flex-1 custom-scrollbar">
+                  {/* Metrics Cards */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    {/* Tests Taken */}
+                    <div 
+                      className="p-4 rounded-xl border flex flex-col justify-between transition-all hover:border-blue-500/50 hover:shadow-md"
+                      style={{ 
+                        backgroundColor: 'rgba(15, 23, 42, 0.5)', 
+                        borderColor: 'var(--border, #334155)' 
+                      }}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Tests Taken</span>
+                        <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-400">
+                          <BookOpen className="w-4 h-4" />
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+                          {studentProfile.metrics.totalTests}
+                        </div>
+                        <span className="text-[11px] text-slate-400 mt-0.5 block">Completed exams</span>
+                      </div>
+                    </div>
+
+                    {/* Average Score */}
+                    <div 
+                      className="p-4 rounded-xl border flex flex-col justify-between transition-all hover:border-emerald-500/50 hover:shadow-md"
+                      style={{ 
+                        backgroundColor: 'rgba(15, 23, 42, 0.5)', 
+                        borderColor: 'var(--border, #334155)' 
+                      }}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Average Score</span>
+                        <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400">
+                          <TrendingUp className="w-4 h-4" />
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+                          {studentProfile.metrics.averageScore}%
+                        </div>
+                        <span className="text-[11px] text-emerald-400 font-medium mt-0.5 block">Overall accuracy</span>
+                      </div>
+                    </div>
+
+                    {/* Highest Score */}
+                    <div 
+                      className="p-4 rounded-xl border flex flex-col justify-between transition-all hover:border-amber-500/50 hover:shadow-md"
+                      style={{ 
+                        backgroundColor: 'rgba(15, 23, 42, 0.5)', 
+                        borderColor: 'var(--border, #334155)' 
+                      }}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Highest Score</span>
+                        <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-400">
+                          <Award className="w-4 h-4" />
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+                          {studentProfile.metrics.highestScore}%
+                        </div>
+                        <span className="text-[11px] text-amber-400 font-medium mt-0.5 block">Peak performance</span>
+                      </div>
+                    </div>
+
+                    {/* Avg Time / Q */}
+                    <div 
+                      className="p-4 rounded-xl border flex flex-col justify-between transition-all hover:border-purple-500/50 hover:shadow-md"
+                      style={{ 
+                        backgroundColor: 'rgba(15, 23, 42, 0.5)', 
+                        borderColor: 'var(--border, #334155)' 
+                      }}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-slate-400">Avg Time / Q</span>
+                        <div className="p-1.5 rounded-lg bg-purple-500/10 text-purple-400">
+                          <Clock className="w-4 h-4" />
+                        </div>
+                      </div>
+                      <div>
+                        <div className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
+                          {studentProfile.metrics.averageTimePerQuestion > 0 ? `${studentProfile.metrics.averageTimePerQuestion}s` : 'N/A'}
+                        </div>
+                        <span className="text-[11px] text-slate-400 mt-0.5 block">Pacing speed</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Assessment History Table */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-semibold text-white flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4 text-primary" />
+                        Completed Assessments
+                      </h4>
+                      <span 
+                        className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full border"
+                        style={{ 
+                          backgroundColor: 'rgba(51, 65, 85, 0.4)', 
+                          borderColor: 'var(--border, #334155)',
+                          color: 'var(--text-muted, #94a3b8)' 
+                        }}
+                      >
+                        {studentProfile.assessments.length} {studentProfile.assessments.length === 1 ? 'Assessment' : 'Assessments'}
                       </span>
                     </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Reg No: <span className="font-mono font-medium text-foreground">{studentProfile.student.registerNumber}</span> • {studentProfile.student.email}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      {studentProfile.student.college} • {studentProfile.student.department}
-                    </p>
-                  </div>
-                </div>
 
-                {/* Metrics Cards */}
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                  <div className="p-3 rounded-lg border border-border bg-muted/20">
-                    <span className="text-[11px] text-muted-foreground uppercase font-semibold">Tests Taken</span>
-                    <p className="text-xl font-bold text-foreground mt-1">{studentProfile.metrics.totalTests}</p>
-                  </div>
-                  <div className="p-3 rounded-lg border border-border bg-muted/20">
-                    <span className="text-[11px] text-muted-foreground uppercase font-semibold">Average Score</span>
-                    <p className="text-xl font-bold text-foreground mt-1">{studentProfile.metrics.averageScore}%</p>
-                  </div>
-                  <div className="p-3 rounded-lg border border-border bg-muted/20">
-                    <span className="text-[11px] text-muted-foreground uppercase font-semibold">Highest Score</span>
-                    <p className="text-xl font-bold text-foreground mt-1">{studentProfile.metrics.highestScore}%</p>
-                  </div>
-                  <div className="p-3 rounded-lg border border-border bg-muted/20">
-                    <span className="text-[11px] text-muted-foreground uppercase font-semibold">Avg Time / Q</span>
-                    <p className="text-xl font-bold text-foreground mt-1">
-                      {studentProfile.metrics.averageTimePerQuestion > 0 ? `${studentProfile.metrics.averageTimePerQuestion}s` : 'N/A'}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Assessment History Table */}
-                <div>
-                  <h4 className="text-sm font-semibold text-foreground mb-2">Completed Assessments</h4>
-                  <div className="overflow-x-auto rounded-lg border border-border">
-                    <table className="w-full text-left text-xs border-collapse">
-                      <thead>
-                        <tr className="border-b border-border bg-muted/40 text-muted-foreground font-semibold">
-                          <th className="py-2.5 px-3">Assessment Title</th>
-                          <th className="py-2.5 px-3">Subject</th>
-                          <th className="py-2.5 px-3">Date</th>
-                          <th className="py-2.5 px-3 text-center">Score</th>
-                          <th className="py-2.5 px-3 text-center">Classification</th>
-                          <th className="py-2.5 px-3 text-right">Time Spent</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border">
-                        {studentProfile.assessments.map((a) => (
-                          <tr key={a.resultId} className="hover:bg-muted/30">
-                            <td className="py-2.5 px-3 font-semibold text-foreground">{a.examTitle}</td>
-                            <td className="py-2.5 px-3 text-muted-foreground">{a.subject}</td>
-                            <td className="py-2.5 px-3 text-muted-foreground">{new Date(a.date).toLocaleDateString()}</td>
-                            <td className="py-2.5 px-3 text-center font-bold text-foreground">{a.percentage}%</td>
-                            <td className="py-2.5 px-3 text-center">
-                              <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold border ${getCategoryBadgeClass(a.category)}`}>
-                                {a.category}
-                              </span>
-                            </td>
-                            <td className="py-2.5 px-3 text-right text-muted-foreground">
-                              {Math.floor(a.timeSpentSeconds / 60)}m {a.timeSpentSeconds % 60}s
-                            </td>
+                    <div 
+                      className="overflow-x-auto rounded-xl border shadow-sm"
+                      style={{ 
+                        borderColor: 'var(--border, #334155)',
+                        backgroundColor: 'rgba(15, 23, 42, 0.3)'
+                      }}
+                    >
+                      <table className="w-full text-left text-xs border-collapse">
+                        <thead>
+                          <tr 
+                            className="border-b text-slate-400 font-semibold text-[11px] uppercase tracking-wider"
+                            style={{ 
+                              borderColor: 'var(--border, #334155)', 
+                              backgroundColor: 'rgba(15, 23, 42, 0.7)' 
+                            }}
+                          >
+                            <th className="py-3 px-4">Assessment Title</th>
+                            <th className="py-3 px-4">Subject</th>
+                            <th className="py-3 px-4">Date</th>
+                            <th className="py-3 px-4 text-center">Score</th>
+                            <th className="py-3 px-4 text-center">Classification</th>
+                            <th className="py-3 px-4 text-right">Time Spent</th>
                           </tr>
-                        ))}
-                        {studentProfile.assessments.length === 0 && (
-                          <tr>
-                            <td colSpan={6} className="py-6 text-center text-muted-foreground">
-                              No completed assessments found for this student.
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                {/* Subject Mastery Breakdown */}
-                {studentProfile.subjectBreakdown.length > 0 && (
-                  <div>
-                    <h4 className="text-sm font-semibold text-foreground mb-2">Subject Mastery Breakdown</h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {studentProfile.subjectBreakdown.map((sb) => (
-                        <div key={sb.subject} className="p-3 rounded-lg border border-border bg-card flex items-center justify-between">
-                          <div>
-                            <span className="font-semibold text-foreground text-xs">{sb.subject}</span>
-                            <p className="text-[11px] text-muted-foreground">{sb.testsTaken} assessment{sb.testsTaken !== 1 ? 's' : ''}</p>
-                          </div>
-                          <div className="text-right">
-                            <span className="font-bold text-sm text-foreground">{sb.averageScore}%</span>
-                          </div>
-                        </div>
-                      ))}
+                        </thead>
+                        <tbody 
+                          className="divide-y"
+                          style={{ borderColor: 'var(--border, #334155)' }}
+                        >
+                          {studentProfile.assessments.map((a) => (
+                            <tr 
+                              key={a.resultId} 
+                              className="hover:bg-slate-800/40 transition-colors"
+                            >
+                              <td className="py-3.5 px-4 font-semibold text-white">
+                                {a.examTitle}
+                              </td>
+                              <td className="py-3.5 px-4 text-slate-300">
+                                {a.subject}
+                              </td>
+                              <td className="py-3.5 px-4 text-slate-400 whitespace-nowrap">
+                                {new Date(a.date).toLocaleDateString(undefined, {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric'
+                                })}
+                              </td>
+                              <td className="py-3.5 px-4 text-center">
+                                <span 
+                                  className="inline-block px-2.5 py-1 rounded-lg text-xs font-bold border"
+                                  style={{
+                                    backgroundColor: a.percentage >= 75 ? 'rgba(16, 185, 129, 0.15)' :
+                                                     a.percentage >= 60 ? 'rgba(59, 130, 246, 0.15)' :
+                                                     a.percentage >= 50 ? 'rgba(245, 158, 11, 0.15)' : 'rgba(244, 63, 94, 0.15)',
+                                    borderColor: a.percentage >= 75 ? 'rgba(16, 185, 129, 0.3)' :
+                                                 a.percentage >= 60 ? 'rgba(59, 130, 246, 0.3)' :
+                                                 a.percentage >= 50 ? 'rgba(245, 158, 11, 0.3)' : 'rgba(244, 63, 94, 0.3)',
+                                    color: a.percentage >= 75 ? '#34d399' :
+                                           a.percentage >= 60 ? '#60a5fa' :
+                                           a.percentage >= 50 ? '#fbbf24' : '#f87171'
+                                  }}
+                                >
+                                  {a.percentage}%
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-4 text-center whitespace-nowrap">
+                                <span className={`inline-block px-3 py-0.5 rounded-full text-[11px] font-semibold border ${getCategoryBadgeClass(a.category)}`}>
+                                  {a.category}
+                                </span>
+                              </td>
+                              <td className="py-3.5 px-4 text-right text-slate-400 font-mono">
+                                {Math.floor(a.timeSpentSeconds / 60)}m {a.timeSpentSeconds % 60}s
+                              </td>
+                            </tr>
+                          ))}
+                          {studentProfile.assessments.length === 0 && (
+                            <tr>
+                              <td colSpan={6} className="py-10 text-center text-slate-400">
+                                No completed assessments found for this student.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
-                )}
-              </div>
+
+                  {/* Subject Mastery Breakdown */}
+                  {studentProfile.subjectBreakdown.length > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-semibold text-white flex items-center gap-2">
+                          <BarChart3 className="w-4 h-4 text-primary" />
+                          Subject Mastery Breakdown
+                        </h4>
+                        <span className="text-xs text-slate-400">
+                          Curriculum Competency
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                        {studentProfile.subjectBreakdown.map((sb) => {
+                          const scoreColor = 
+                            sb.averageScore >= 75 ? '#10b981' :
+                            sb.averageScore >= 60 ? '#3b82f6' :
+                            sb.averageScore >= 50 ? '#f59e0b' : '#f43f5e';
+
+                          return (
+                            <div 
+                              key={sb.subject} 
+                              className="p-4 rounded-xl border flex flex-col justify-between transition-all hover:border-slate-500/50"
+                              style={{ 
+                                backgroundColor: 'rgba(15, 23, 42, 0.5)', 
+                                borderColor: 'var(--border, #334155)' 
+                              }}
+                            >
+                              <div className="flex items-start justify-between gap-2 mb-2.5">
+                                <div>
+                                  <span className="font-semibold text-white text-xs block">
+                                    {sb.subject}
+                                  </span>
+                                  <span className="text-[11px] text-slate-400 mt-0.5 block">
+                                    {sb.testsTaken} assessment{sb.testsTaken !== 1 ? 's' : ''} completed
+                                  </span>
+                                </div>
+                                <span 
+                                  className="font-bold text-xs px-2.5 py-1 rounded-lg border text-right flex-shrink-0"
+                                  style={{
+                                    color: scoreColor,
+                                    borderColor: `${scoreColor}40`,
+                                    backgroundColor: `${scoreColor}1a`
+                                  }}
+                                >
+                                  {sb.averageScore}%
+                                </span>
+                              </div>
+
+                              {/* Visual Progress Bar */}
+                              <div className="mt-1">
+                                <div 
+                                  className="w-full h-2 rounded-full overflow-hidden"
+                                  style={{ backgroundColor: 'rgba(51, 65, 85, 0.6)' }}
+                                >
+                                  <div 
+                                    className="h-full rounded-full transition-all duration-500 ease-out"
+                                    style={{ 
+                                      width: `${Math.min(Math.max(sb.averageScore, 0), 100)}%`,
+                                      backgroundColor: scoreColor 
+                                    }}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Modal Footer */}
+                <div 
+                  className="p-4 px-6 border-t flex items-center justify-between"
+                  style={{ 
+                    borderColor: 'var(--border, #334155)', 
+                    backgroundColor: 'rgba(15, 23, 42, 0.7)' 
+                  }}
+                >
+                  <div className="text-xs text-slate-400 flex items-center gap-2">
+                    <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                    <span>Student Profile Record:</span>
+                    <span className="font-mono text-white font-medium">{studentProfile.student.registerNumber}</span>
+                  </div>
+
+                  <button
+                    onClick={() => { setSelectedStudentId(null); setStudentProfile(null); }}
+                    className="px-5 py-2.5 rounded-xl text-xs font-semibold text-white transition-all cursor-pointer shadow-md hover:brightness-110 active:scale-95 flex items-center gap-1.5"
+                    style={{ 
+                      backgroundColor: '#2563eb',
+                      border: '1px solid #3b82f6'
+                    }}
+                  >
+                    Close Profile
+                  </button>
+                </div>
+              </>
             )}
           </div>
         </div>

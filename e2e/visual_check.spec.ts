@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test('Capture screenshots of Assessment Studio and Performance Analytics', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
   // Mock API routes so they return rich data for visual verification
   await page.route('**/api/admin/colleges', async (route) => {
     const mockColleges = Array.from({ length: 49 }, (_, i) => ({
@@ -24,6 +25,47 @@ test('Capture screenshots of Assessment Studio and Performance Analytics', async
 
   await page.route('**/api/admin/questions', async (route) => {
     await route.fulfill({ json: [] });
+  });
+
+  await page.route('**/api/admin/analytics/student/*', async (route) => {
+    await route.fulfill({
+      json: {
+        student: {
+          id: 'stu-1',
+          name: 'Sadhana',
+          registerNumber: '26ACET0318',
+          email: 'sadhanaramu15@gmail.com',
+          college: 'Achariya College of Engineering Technology, Pondicherry',
+          department: 'Computer Science and Engineering'
+        },
+        metrics: {
+          totalTests: 1,
+          averageScore: 100,
+          highestScore: 100,
+          performanceCategory: 'Exceptional',
+          averageTimePerQuestion: 0
+        },
+        assessments: [
+          {
+            resultId: 'res-1',
+            examTitle: 'ACET - 1st Year Aptitude Test',
+            subject: 'Quantitative & Reasoning Aptitude',
+            score: 100,
+            percentage: 100,
+            category: 'Exceptional',
+            date: '2026-10-07T00:00:00.000Z',
+            timeSpentSeconds: 763
+          }
+        ],
+        subjectBreakdown: [
+          {
+            subject: 'Quantitative & Reasoning Aptitude',
+            averageScore: 100,
+            testsTaken: 1
+          }
+        ]
+      }
+    });
   });
 
   await page.route('**/api/admin/analytics/consolidated*', async (route) => {
@@ -108,8 +150,37 @@ test('Capture screenshots of Assessment Studio and Performance Analytics', async
 
   // 2. Navigate to Performance Analytics
   await page.goto('/admin/dashboard?tab=analytics');
-  await page.waitForTimeout(800);
-  await page.screenshot({ path: 'test-results/performance-analytics.png', fullPage: true });
+  await page.waitForTimeout(1000);
+  await page.screenshot({ path: 'test-results/performance-analytics-top.png' });
+
+  // Scroll down to view the charts and student directory table
+  await page.evaluate(() => {
+    const el = document.querySelector('table');
+    if (el) el.scrollIntoView();
+  });
+  await page.waitForTimeout(600);
+  await page.screenshot({ path: 'test-results/performance-analytics-table.png' });
+
+  // Click "View Profile" on the first student to open the modal
+  const viewProfileBtn = page.locator('button:has-text("View Profile")').first();
+  if (await viewProfileBtn.isVisible()) {
+    await viewProfileBtn.click();
+    await page.waitForTimeout(600);
+    await page.screenshot({ path: 'test-results/student-profile-modal.png' });
+
+    // Also take a focused screenshot of the modal itself
+    const modalEl = page.locator('.fixed.inset-0 > div').first();
+    if (await modalEl.isVisible()) {
+      await modalEl.screenshot({ path: 'test-results/modal-focused.png' });
+    }
+
+    // Close modal
+    const closeBtn = page.locator('button:has-text("Close Profile")');
+    if (await closeBtn.isVisible()) {
+      await closeBtn.click();
+      await page.waitForTimeout(300);
+    }
+  }
 
   // 3. Navigate to Q-Papers Extractor
   await page.goto('/admin/dashboard?tab=qpapers');
