@@ -764,7 +764,7 @@ export const ConsolidatedStudentAnalytics: React.FC<Props> = ({ userRole, userCo
                         border: '1px solid rgba(255, 255, 255, 0.15)'
                       }}
                     >
-                      {studentProfile.student.name
+                      {studentProfile.student?.name
                         .split(' ')
                         .filter(Boolean)
                         .map(n => n[0])
@@ -776,10 +776,10 @@ export const ConsolidatedStudentAnalytics: React.FC<Props> = ({ userRole, userCo
                     <div className="space-y-1">
                       <div className="flex flex-wrap items-center gap-3">
                         <h3 className="text-2xl font-bold tracking-tight text-white">
-                          {studentProfile.student.name}
+                          {studentProfile.student?.name}
                         </h3>
-                        <span className={`px-3 py-0.5 rounded-full text-xs font-semibold border ${getCategoryBadgeClass(studentProfile.metrics.performanceCategory)}`}>
-                          {studentProfile.metrics.performanceCategory}
+                        <span className={`px-3 py-0.5 rounded-full text-xs font-semibold border ${getCategoryBadgeClass(studentProfile.metrics?.performanceCategory || 'Exceptional')}`}>
+                          {studentProfile.metrics?.performanceCategory || 'Exceptional'}
                         </span>
                       </div>
                       
@@ -804,12 +804,12 @@ export const ConsolidatedStudentAnalytics: React.FC<Props> = ({ userRole, userCo
                       <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400 pt-0.5">
                         <span className="flex items-center gap-1.5">
                           <Building className="w-3.5 h-3.5 text-slate-400" />
-                          {studentProfile.student.college}
+                          {studentProfile.student?.college || (studentProfile.student as any)?.collegeName || 'N/A'}
                         </span>
                         <span className="text-slate-500">•</span>
                         <span className="flex items-center gap-1.5">
                           <GraduationCap className="w-3.5 h-3.5 text-slate-400" />
-                          {studentProfile.student.department}
+                          {studentProfile.student?.department || (studentProfile.student as any)?.departmentName || 'N/A'}
                         </span>
                       </div>
                     </div>
@@ -849,7 +849,7 @@ export const ConsolidatedStudentAnalytics: React.FC<Props> = ({ userRole, userCo
                       </div>
                       <div>
                         <div className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-                          {studentProfile.metrics.totalTests}
+                          {studentProfile.metrics?.totalTests ?? (studentProfile as any).summary?.totalTests ?? 0}
                         </div>
                         <span className="text-[11px] text-slate-400 mt-0.5 block">Completed exams</span>
                       </div>
@@ -871,7 +871,7 @@ export const ConsolidatedStudentAnalytics: React.FC<Props> = ({ userRole, userCo
                       </div>
                       <div>
                         <div className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-                          {studentProfile.metrics.averageScore}%
+                          {studentProfile.metrics?.averageScore ?? (studentProfile as any).summary?.averageScore ?? 0}%
                         </div>
                         <span className="text-[11px] text-emerald-400 font-medium mt-0.5 block">Overall accuracy</span>
                       </div>
@@ -893,7 +893,7 @@ export const ConsolidatedStudentAnalytics: React.FC<Props> = ({ userRole, userCo
                       </div>
                       <div>
                         <div className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-                          {studentProfile.metrics.highestScore}%
+                          {studentProfile.metrics?.highestScore ?? (studentProfile as any).summary?.highestScore ?? 0}%
                         </div>
                         <span className="text-[11px] text-amber-400 font-medium mt-0.5 block">Peak performance</span>
                       </div>
@@ -915,7 +915,7 @@ export const ConsolidatedStudentAnalytics: React.FC<Props> = ({ userRole, userCo
                       </div>
                       <div>
                         <div className="text-2xl sm:text-3xl font-extrabold tracking-tight text-white">
-                          {studentProfile.metrics.averageTimePerQuestion > 0 ? `${studentProfile.metrics.averageTimePerQuestion}s` : 'N/A'}
+                          {(studentProfile.metrics?.averageTimePerQuestion ?? (studentProfile as any).summary?.averageTimePerQuestionSeconds ?? 0) > 0 ? `${studentProfile.metrics?.averageTimePerQuestion ?? (studentProfile as any).summary?.averageTimePerQuestionSeconds}s` : 'N/A'}
                         </div>
                         <span className="text-[11px] text-slate-400 mt-0.5 block">Pacing speed</span>
                       </div>

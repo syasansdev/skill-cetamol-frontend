@@ -70,6 +70,7 @@ export const CentralizedAssessmentStudio: React.FC = () => {
   const [assessments, setAssessments] = useState<CentralAssessment[]>([]);
   const [colleges, setColleges] = useState<{ id: string; name: string; code: string }[]>([]);
   const [availableQuestions, setAvailableQuestions] = useState<any[]>([]);
+  const [subjects, setSubjects] = useState<{ id: string; name: string; code?: string }[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
 
   // Monitoring State
@@ -80,7 +81,9 @@ export const CentralizedAssessmentStudio: React.FC = () => {
   // Form State for Centralized Assessment Creation
   const [formTitle, setFormTitle] = useState<string>('');
   const [formDescription, setFormDescription] = useState<string>('');
+  const [formSubjectId, setFormSubjectId] = useState<string>('');
   const [formSubject, setFormSubject] = useState<string>('');
+  const [isCustomSubject, setIsCustomSubject] = useState<boolean>(false);
   const [formDuration, setFormDuration] = useState<number>(60);
   const [formTotalMarks, setFormTotalMarks] = useState<number>(100);
   const [formPassingMarks, setFormPassingMarks] = useState<number>(40);
@@ -99,14 +102,16 @@ export const CentralizedAssessmentStudio: React.FC = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [examsRes, collegesRes, qRes] = await Promise.all([
+      const [examsRes, collegesRes, qRes, subjectsRes] = await Promise.all([
         api.get('/admin/central-exams'),
         api.get('/admin/colleges'),
-        api.get('/admin/questions').catch(() => ({ data: [] }))
+        api.get('/admin/questions').catch(() => ({ data: [] })),
+        api.get('/admin/subjects').catch(() => ({ data: [] }))
       ]);
       setAssessments(examsRes.data || []);
       setColleges(collegesRes.data || []);
       setAvailableQuestions(qRes.data || []);
+      setSubjects(subjectsRes.data || []);
     } catch (err: any) {
       console.error('Error fetching central assessments:', err);
       showToast(err.response?.data?.message || 'Failed to load central assessment studio data', 'error');
@@ -173,7 +178,9 @@ export const CentralizedAssessmentStudio: React.FC = () => {
       await api.post('/admin/central-exams', {
         title: formTitle,
         description: formDescription,
+        subjectId: formSubjectId || undefined,
         subject: formSubject || 'General',
+        duration: formDuration,
         durationMinutes: formDuration,
         totalMarks: formTotalMarks,
         passingMarks: formPassingMarks,
@@ -214,6 +221,8 @@ export const CentralizedAssessmentStudio: React.FC = () => {
     setFormTitle('');
     setFormDescription('');
     setFormSubject('');
+    setFormSubjectId('');
+    setIsCustomSubject(false);
     setFormDuration(60);
     setFormTotalMarks(100);
     setFormPassingMarks(40);
@@ -392,14 +401,56 @@ export const CentralizedAssessmentStudio: React.FC = () => {
 
               <div className="grid grid-cols-3 gap-3">
                 <div className="form-group">
-                  <label className="form-label">Subject</label>
-                  <input
-                    type="text"
-                    placeholder="e.g., Mathematics"
-                    value={formSubject}
-                    onChange={(e) => setFormSubject(e.target.value)}
-                    className="form-control"
-                  />
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="form-label" style={{ margin: 0 }}>Subject Curriculum *</label>
+                    <button
+                      type="button"
+                      className="text-[11px] text-primary hover:underline"
+                      onClick={() => {
+                        setIsCustomSubject(!isCustomSubject);
+                        if (!isCustomSubject) {
+                          setFormSubjectId('');
+                        }
+                      }}
+                    >
+                      {isCustomSubject ? '← Select' : '+ Custom'}
+                    </button>
+                  </div>
+                  {isCustomSubject ? (
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g., Mathematics"
+                      value={formSubject}
+                      onChange={(e) => setFormSubject(e.target.value)}
+                      className="form-control"
+                    />
+                  ) : (
+                    <select
+                      className="form-control"
+                      required
+                      value={formSubjectId}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (val === '__custom__') {
+                          setIsCustomSubject(true);
+                          setFormSubjectId('');
+                        } else {
+                          setFormSubjectId(val);
+                          const matched = subjects.find(s => s.id === val);
+                          if (matched) setFormSubject(matched.name);
+                        }
+                      }}
+                    >
+                      <option value="">-- Select Subject --</option>
+                      {subjects.map(s => (
+                        <option key={s.id} value={s.id}>
+                          {s.name} {s.code ? `(${s.code})` : ''}
+                        </option>
+                      ))}
+                      <option value="__custom__">+ Enter Custom Subject...</option>
+                    </select>
+                  )}
                 </div>
 
                 <div className="form-group">

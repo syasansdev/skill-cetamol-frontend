@@ -1511,6 +1511,32 @@ export const FacultyDashboard: React.FC = () => {
                   <label className="form-label">Exam Title</label>
                   <input type="text" required className="form-control" placeholder="Web Tech Quiz 3" value={examTitle} onChange={e => setExamTitle(e.target.value)} />
                 </div>
+
+                <div className="form-group">
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                    <label className="form-label" style={{ margin: 0 }}>Subject Curriculum *</label>
+                    <button
+                      type="button"
+                      className="text-xs text-primary hover:underline"
+                      onClick={() => setShowAddSubjectModal(true)}
+                    >
+                      + Add New Subject
+                    </button>
+                  </div>
+                  <select
+                    className="form-control"
+                    required
+                    value={examSubId}
+                    onChange={e => setExamSubId(e.target.value)}
+                  >
+                    <option value="">-- Select Subject Curriculum --</option>
+                    {subjects.map(s => (
+                      <option key={s.id} value={s.id}>
+                        {s.name} {s.code ? `(${s.code})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
                 
                 <div className="form-group">
                   <label className="form-label">Instructions / Description (Optional)</label>

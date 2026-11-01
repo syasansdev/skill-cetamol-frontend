@@ -704,6 +704,8 @@ export const Login: React.FC = () => {
                   />
                   <button
                     type="button"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                    data-testid="toggle-password"
                     style={{
                       position: 'absolute',
                       right: '12px',

@@ -161,36 +161,36 @@ export const AdminDashboard: React.FC = () => {
   // Fetch data
   const fetchData = async () => {
     try {
-      const colRes = await api.get('/admin/colleges');
-      setColleges(colRes.data);
+      const colRes = await api.get('/admin/colleges').catch(() => ({ data: [] }));
+      setColleges(colRes.data || []);
 
-      const usersRes = await api.get('/admin/users');
-      setUsers(usersRes.data);
+      const usersRes = await api.get('/admin/users').catch(() => ({ data: [] }));
+      setUsers(usersRes.data || []);
 
-      const deptRes = await api.get('/admin/departments');
-      setDepartments(deptRes.data);
+      const deptRes = await api.get('/admin/departments').catch(() => ({ data: [] }));
+      setDepartments(deptRes.data || []);
 
-      const courseRes = await api.get('/admin/courses');
-      setCourses(courseRes.data);
+      const courseRes = await api.get('/admin/courses').catch(() => ({ data: [] }));
+      setCourses(courseRes.data || []);
 
-      const subRes = await api.get('/admin/subjects');
-      setSubjects(subRes.data);
+      const subRes = await api.get('/admin/subjects').catch(() => ({ data: [] }));
+      setSubjects(subRes.data || []);
 
-      const examRes = await api.get('/faculty/exams');
-      setExams(examRes.data);
+      const examRes = await api.get('/faculty/exams').catch(() => ({ data: [] }));
+      setExams(examRes.data || []);
 
-      const questRes = await api.get('/faculty/questions');
-      setQuestions(questRes.data);
+      const questRes = await api.get('/faculty/questions').catch(() => ({ data: [] }));
+      setQuestions(questRes.data || []);
 
-      const resRes = await api.get('/faculty/results');
-      setResults(resRes.data);
+      const resRes = await api.get('/faculty/results').catch(() => ({ data: [] }));
+      setResults(resRes.data || []);
 
-      const lockedRes = await api.get('/admin/locked-exams');
-      setLockedExams(lockedRes.data);
+      const lockedRes = await api.get('/admin/locked-exams').catch(() => ({ data: [] }));
+      setLockedExams(lockedRes.data || []);
 
       try {
         const docRes = await api.get('/admin/uploaded-qpapers');
-        setUploadedDocuments(docRes.data);
+        setUploadedDocuments(docRes.data || []);
       } catch (e) {
         // optional
       }
@@ -805,25 +805,26 @@ export const AdminDashboard: React.FC = () => {
   };
 
   // Filter lists
-  const students = users.filter(u => u.role === 'student') as Student[];
-  const faculties = users.filter(u => u.role === 'faculty') as Faculty[];
-  const activeStudents = students.filter(s => s.status === 'active');
-  const pendingStudents = students.filter(s => s.status === 'pending');
+  const students = (users || []).filter(u => u && u.role === 'student') as Student[];
+  const faculties = (users || []).filter(u => u && u.role === 'faculty') as Faculty[];
+  const activeStudents = students.filter(s => s && s.status === 'active');
+  const pendingStudents = students.filter(s => s && s.status === 'pending');
 
   // Chart Data calculations
-  const deptStudentCounts = departments.map(d => {
-    const count = students.filter(s => s.departmentId === d.id).length;
+  const deptStudentCounts = (departments || []).map(d => {
+    const count = students.filter(s => s && s.departmentId === d.id).length;
     return { name: d.code, Students: count };
   });
 
   const passFailData = [
-    { name: 'Passed', value: results.filter(r => r.status === 'pass').length },
-    { name: 'Failed', value: results.filter(r => r.status === 'fail').length }
+    { name: 'Passed', value: (results || []).filter(r => r && r.status === 'pass').length },
+    { name: 'Failed', value: (results || []).filter(r => r && r.status === 'fail').length }
   ];
 
   const studentGrowthData = (() => {
     const datesMap: Record<string, number> = {};
-    const sortedStudents = [...students].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+    const validStudents = students.filter(s => s && s.createdAt);
+    const sortedStudents = [...validStudents].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
     
     let runningTotal = 0;
     sortedStudents.forEach(s => {
