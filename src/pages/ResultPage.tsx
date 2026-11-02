@@ -108,39 +108,68 @@ export const ResultPage: React.FC = () => {
 
   const isPassed = result.status === 'pass';
 
-  // Performance classification styling (Feature 2)
-  const category = result.performanceCategory || (result.percentage >= 90 ? 'Exceptional' : result.percentage >= 75 ? 'Good' : result.percentage >= 50 ? 'Average' : 'Needs Improvement');
-  const categoryTheme: Record<string, { bg: string; border: string; text: string; badgeBg: string; desc: string }> = {
-    'Exceptional': {
+  const normalizeGradeCategory = (cat?: string | null, pct: number = 0): string => {
+    if (!cat) {
+      if (pct >= 90) return 'Outstanding';
+      if (pct >= 75) return 'Proficient';
+      if (pct >= 60) return 'Competent';
+      if (pct >= 40) return 'Developing';
+      return 'Needs Improvement';
+    }
+    const lower = cat.toLowerCase().trim();
+    if (lower === 'exceptional' || lower === 'outstanding') return 'Outstanding';
+    if (lower === 'good' || lower === 'proficient') return 'Proficient';
+    if (lower === 'competent') return 'Competent';
+    if (lower === 'average' || lower === 'developing') return 'Developing';
+    if (lower.includes('need') || lower.includes('improv')) return 'Needs Improvement';
+    return cat;
+  };
+
+  // Performance classification styling with 5 canonical tiers & emojis
+  const category = normalizeGradeCategory(result.grade || result.performanceCategory, result.percentage);
+  const categoryTheme: Record<string, { bg: string; border: string; text: string; badgeBg: string; emoji: string; desc: string }> = {
+    'Outstanding': {
       bg: 'rgba(16, 185, 129, 0.08)',
       border: '#10b981',
       text: '#059669',
       badgeBg: '#10b981',
+      emoji: '🌟',
       desc: 'Outstanding subject mastery with exemplary accuracy and problem-solving speed.'
     },
-    'Good': {
+    'Proficient': {
       bg: 'rgba(59, 130, 246, 0.08)',
       border: '#3b82f6',
       text: '#2563eb',
       badgeBg: '#3b82f6',
+      emoji: '🎯',
       desc: 'Strong competence and understanding with consistent accuracy across sections.'
     },
-    'Average': {
+    'Competent': {
+      bg: 'rgba(6, 182, 212, 0.08)',
+      border: '#06b6d4',
+      text: '#0891b2',
+      badgeBg: '#06b6d4',
+      emoji: '✅',
+      desc: 'Sound grasp of foundational concepts, demonstrating practical competence.'
+    },
+    'Developing': {
       bg: 'rgba(245, 158, 11, 0.08)',
       border: '#f59e0b',
       text: '#d97706',
       badgeBg: '#f59e0b',
-      desc: 'Adequate foundational understanding; targeted practice recommended to advance speed.'
+      emoji: '📈',
+      desc: 'Developing foundational skills; additional practice and concept review recommended.'
     },
     'Needs Improvement': {
       bg: 'rgba(239, 68, 68, 0.08)',
       border: '#ef4444',
       text: '#dc2626',
       badgeBg: '#ef4444',
+      emoji: '⚠️',
       desc: 'Significant conceptual review and structured practice required in weaker topic areas.'
     }
   };
-  const currentTheme = categoryTheme[category] || categoryTheme['Average'];
+  const currentTheme = categoryTheme[category] || categoryTheme['Developing'];
 
   // Total and answered counts
   const totalQuestions = result.detailedQuestions?.length || (result.correctCount + result.wrongCount + result.skippedCount) || 1;
@@ -288,7 +317,7 @@ export const ResultPage: React.FC = () => {
         </div>
 
         {/* Candidate & Exam Metadata Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', paddingTop: '16px', borderTop: '1px solid var(--border)' }}>
           <div style={{ padding: '12px 14px', backgroundColor: 'var(--hover)', borderRadius: '6px' }}>
             <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: 600 }}>Candidate Name</span>
             <strong style={{ fontSize: '14px', color: 'var(--text-main)' }}>{result.studentName}</strong>
@@ -304,6 +333,12 @@ export const ResultPage: React.FC = () => {
           <div style={{ padding: '12px 14px', backgroundColor: 'var(--hover)', borderRadius: '6px' }}>
             <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: 600 }}>Maximum Marks</span>
             <strong style={{ fontSize: '14px', color: 'var(--text-main)' }}>{result.totalPoints} Marks</strong>
+          </div>
+          <div style={{ padding: '12px 14px', backgroundColor: 'var(--hover)', borderRadius: '6px' }}>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)', display: 'block', textTransform: 'uppercase', fontWeight: 600 }}>Grade Awarded</span>
+            <strong style={{ fontSize: '14px', color: currentTheme.text, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span>{currentTheme.emoji}</span> {category}
+            </strong>
           </div>
         </div>
       </div>
@@ -329,11 +364,15 @@ export const ResultPage: React.FC = () => {
             <span style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.08em', opacity: 0.9, textTransform: 'uppercase' }}>
               SECTION B &bull; SCORE SECURED
             </span>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', margin: '14px 0 6px' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px', margin: '14px 0 6px', flexWrap: 'wrap' }}>
               <span style={{ fontSize: '46px', fontWeight: 800, lineHeight: 1 }}>{result.percentage}%</span>
-              <span style={{ fontSize: '18px', fontWeight: 600, opacity: 0.9 }}>({result.score} / {result.totalPoints} pts)</span>
+              <span style={{ fontSize: '18px', fontWeight: 600, opacity: 0.95 }}>({result.score} / {result.totalPoints} Marks)</span>
             </div>
-            <p style={{ fontSize: '13px', opacity: 0.85, margin: 0 }}>
+            <div style={{ marginTop: '8px', display: 'inline-flex', alignItems: 'center', gap: '6px', backgroundColor: 'rgba(255, 255, 255, 0.2)', padding: '5px 12px', borderRadius: '9999px', fontSize: '13px', fontWeight: 700 }}>
+              <span>{currentTheme.emoji}</span>
+              <span>Grade: {category}</span>
+            </div>
+            <p style={{ fontSize: '13px', opacity: 0.85, margin: '10px 0 0' }}>
               Calculated based on authoritative server evaluation rules.
             </p>
           </div>
@@ -371,13 +410,16 @@ export const ResultPage: React.FC = () => {
                 padding: '4px 12px',
                 borderRadius: '9999px',
                 fontWeight: 700,
-                fontSize: '12px'
+                fontSize: '12px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px'
               }}>
-                {category}
+                <span>{currentTheme.emoji}</span> {category}
               </span>
             </div>
-            <h3 style={{ fontSize: '24px', fontWeight: 800, color: currentTheme.text, margin: '0 0 8px' }}>
-              {category}
+            <h3 style={{ fontSize: '24px', fontWeight: 800, color: currentTheme.text, margin: '0 0 8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>{currentTheme.emoji}</span> {category}
             </h3>
             <p style={{ fontSize: '13px', color: 'var(--text-main)', lineHeight: '1.5', margin: 0 }}>
               {currentTheme.desc}

@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   Plus, Building, Calendar, Clock, Globe, Eye, 
   CheckCircle2, AlertCircle, FileText, Check, X, 
-  BarChart3, RefreshCw, Send, ShieldCheck, Layers, Users
+  BarChart3, RefreshCw, Send, ShieldCheck, Layers, Users,
+  Database, Shuffle
 } from 'lucide-react';
 import { 
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, 
@@ -10,6 +11,7 @@ import {
 } from 'recharts';
 import api from '../services/api';
 import { useToast } from '../contexts/ToastContext';
+import { ExamGradingThresholdEditor, DEFAULT_GRADING_TIERS, GradingThresholdItem } from './PerformanceThresholdConfig';
 
 interface CentralAssessment {
   id: string;
@@ -96,6 +98,8 @@ export const CentralizedAssessmentStudio: React.FC = () => {
   const [selectedCollegeIds, setSelectedCollegeIds] = useState<string[]>([]);
   const [selectedQuestionIds, setSelectedQuestionIds] = useState<string[]>([]);
   const [questionSearch, setQuestionSearch] = useState<string>('');
+  const [autoPickCount, setAutoPickCount] = useState<number>(20);
+  const [formGradingThresholds, setFormGradingThresholds] = useState<GradingThresholdItem[]>(DEFAULT_GRADING_TIERS);
   const [submitting, setSubmitting] = useState<boolean>(false);
 
   // Fetch central assessments and colleges
@@ -161,6 +165,84 @@ export const CentralizedAssessmentStudio: React.FC = () => {
     );
   };
 
+  // Filter questions by selected subject and search input
+  const filteredStudioQuestions = availableQuestions.filter(q => {
+    let matchSub = true;
+    if (formSubjectId) {
+      matchSub = q.subjectId === formSubjectId;
+    } else if (formSubject && formSubject.trim()) {
+      const matched = subjects.find(s => s.name.toLowerCase() === formSubject.toLowerCase());
+      if (matched) {
+        matchSub = q.subjectId === matched.id;
+      }
+    }
+    const qContent = (q.text || q.question || '').toLowerCase();
+    const matchSearch = questionSearch ? qContent.includes(questionSearch.toLowerCase()) : true;
+    return matchSub && matchSearch;
+  });
+
+  // Auto-Pick Questions Handler
+  const handleAutoPickQuestions = () => {
+    let pool = availableQuestions;
+    if (formSubjectId) {
+      pool = pool.filter(q => q.subjectId === formSubjectId);
+    } else if (formSubject && formSubject.trim()) {
+      const matched = subjects.find(s => s.name.toLowerCase() === formSubject.toLowerCase());
+      if (matched) {
+        pool = pool.filter(q => q.subjectId === matched.id);
+      }
+    }
+
+    if (pool.length === 0) {
+      if (!formSubjectId && !formSubject) {
+        showToast('Please select a Subject Curriculum first before auto-picking questions.', 'warning');
+      } else {
+        showToast(`No questions found in repository for "${formSubject || 'selected subject'}". Try selecting another subject or adding questions.`, 'warning');
+      }
+      return;
+    }
+
+    const countToPick = Math.min(autoPickCount || 20, pool.length);
+    const shuffled = [...pool].sort(() => 0.5 - Math.random());
+    const picked = shuffled.slice(0, countToPick).map(q => q.id);
+    setSelectedQuestionIds(picked);
+
+    const calcMarks = picked.reduce((sum, qId) => {
+      const foundQ = availableQuestions.find(q => q.id === qId);
+      return sum + (foundQ?.points || foundQ?.marks || 1);
+    }, 0);
+    if (calcMarks > 0) {
+      setFormTotalMarks(calcMarks);
+    }
+
+    showToast(`🎲 Successfully auto-picked ${picked.length} random questions from "${formSubject || 'subject pool'}" (${pool.length} available)!`, 'success');
+  };
+
+  const handleSelectAllQuestions = () => {
+    let pool = availableQuestions;
+    if (formSubjectId) {
+      pool = pool.filter(q => q.subjectId === formSubjectId);
+    } else if (formSubject && formSubject.trim()) {
+      const matched = subjects.find(s => s.name.toLowerCase() === formSubject.toLowerCase());
+      if (matched) {
+        pool = pool.filter(q => q.subjectId === matched.id);
+      }
+    }
+    if (pool.length === 0) {
+      showToast('No questions available in pool to select.', 'warning');
+      return;
+    }
+    setSelectedQuestionIds(pool.map(q => q.id));
+    const calcMarks = pool.reduce((sum, q) => sum + (q.points || q.marks || 1), 0);
+    if (calcMarks > 0) setFormTotalMarks(calcMarks);
+    showToast(`Selected all ${pool.length} questions from this curriculum.`, 'info');
+  };
+
+  const handleClearSelectedQuestions = () => {
+    setSelectedQuestionIds([]);
+    showToast('Cleared question selection.', 'info');
+  };
+
   // Submit Centralized Assessment Creation
   const handleCreateAssessment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -183,11 +265,13 @@ export const CentralizedAssessmentStudio: React.FC = () => {
         duration: formDuration,
         durationMinutes: formDuration,
         totalMarks: formTotalMarks,
+        questionCount: selectedQuestionIds.length > 0 ? selectedQuestionIds.length : autoPickCount,
         passingMarks: formPassingMarks,
         instructions: formInstructions,
         startDate: formStartDate || null,
         endDate: formEndDate || null,
         publishedStatus: formStatus,
+        gradingThresholds: formGradingThresholds,
         collegeIds: selectedCollegeIds,
         questionIds: selectedQuestionIds
       });
@@ -231,6 +315,9 @@ export const CentralizedAssessmentStudio: React.FC = () => {
     setFormStatus('published');
     setSelectedCollegeIds([]);
     setSelectedQuestionIds([]);
+    setAutoPickCount(20);
+    setQuestionSearch('');
+    setFormGradingThresholds(DEFAULT_GRADING_TIERS);
   };
 
   const getStatusBadge = (status: string) => {
@@ -604,24 +691,185 @@ export const CentralizedAssessmentStudio: React.FC = () => {
                   )}
                 </div>
               </div>
+            </div>
+          </div>
 
-              {/* Action Buttons */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-border" style={{ marginTop: '20px' }}>
+          {/* Section C: Authoritative Question Repository & Auto-Pick */}
+          <div className="card" style={{ padding: '24px', margin: 0 }}>
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4 pb-3 border-b border-border">
+              <div>
+                <h4 className="font-semibold text-sm text-foreground flex items-center gap-2" style={{ margin: 0 }}>
+                  <Database className="w-4 h-4 text-primary" />
+                  Question Bank Selection ({selectedQuestionIds.length} Questions Selected)
+                </h4>
+                <p className="text-xs text-muted-foreground mt-0.5" style={{ margin: 0 }}>
+                  Select questions from the curriculum question bank, or click Auto-Pick to automatically pick random questions.
+                </p>
+              </div>
+
+              {/* Auto-Pick Controls Bar */}
+              <div className="flex items-center flex-wrap gap-2">
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded" style={{ border: '1px solid var(--border)', backgroundColor: 'var(--bg-app)' }}>
+                  <span className="text-xs text-muted-foreground">Pick:</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max={Math.max(1, availableQuestions.length)}
+                    value={autoPickCount}
+                    onChange={(e) => setAutoPickCount(Math.max(1, parseInt(e.target.value) || 10))}
+                    className="form-control"
+                    style={{ width: '60px', padding: '2px 6px', height: '26px', fontSize: '12px' }}
+                  />
+                  <span className="text-xs text-muted-foreground">questions</span>
+                </div>
+
                 <button
                   type="button"
-                  onClick={() => setActiveView('list')}
-                  className="btn btn-secondary"
+                  onClick={handleAutoPickQuestions}
+                  className="btn btn-primary btn-sm flex items-center gap-1.5"
+                  style={{ fontSize: '12px', padding: '5px 12px' }}
                 >
-                  Cancel
+                  <Shuffle className="w-3.5 h-3.5" />
+                  Auto-Pick Questions
                 </button>
+
                 <button
-                  type="submit"
-                  disabled={submitting}
-                  className="btn btn-primary"
+                  type="button"
+                  onClick={handleSelectAllQuestions}
+                  className="btn btn-secondary btn-sm"
+                  style={{ fontSize: '12px', padding: '5px 10px' }}
                 >
-                  {submitting ? 'Creating Assessment...' : 'Create & Assign Assessment'}
+                  Select All
                 </button>
+
+                {selectedQuestionIds.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={handleClearSelectedQuestions}
+                    className="btn btn-secondary btn-sm"
+                    style={{ fontSize: '12px', padding: '5px 10px', color: 'var(--text-muted)' }}
+                  >
+                    Clear
+                  </button>
+                )}
               </div>
+            </div>
+
+            {/* Question Filter & Search */}
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span>Subject Pool:</span>
+                <span className="badge badge-info" style={{ textTransform: 'none' }}>
+                  {formSubject || 'All Subjects'}
+                </span>
+                <span>({filteredStudioQuestions.length} questions available)</span>
+              </div>
+              <div className="relative" style={{ minWidth: '240px' }}>
+                <input
+                  type="text"
+                  placeholder="Search question text..."
+                  value={questionSearch}
+                  onChange={(e) => setQuestionSearch(e.target.value)}
+                  className="form-control"
+                  style={{ height: '30px', fontSize: '12px' }}
+                />
+              </div>
+            </div>
+
+            {/* Questions Scrollable List */}
+            <div
+              className="overflow-y-auto space-y-1.5 p-2"
+              style={{
+                maxHeight: '300px',
+                borderRadius: 'var(--radius)',
+                border: '1px solid var(--border)',
+                backgroundColor: 'var(--bg-app)'
+              }}
+            >
+              {filteredStudioQuestions.map((q: any) => {
+                const isSelected = selectedQuestionIds.includes(q.id);
+                const qText = q.text || q.question || 'Untitled Question';
+                const qPoints = q.points || q.marks || 1;
+                const qDiff = q.difficulty || 'medium';
+                const qType = q.type || 'mcq';
+
+                return (
+                  <div
+                    key={q.id}
+                    onClick={() => toggleQuestion(q.id)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      padding: '8px 12px',
+                      borderRadius: 'var(--radius)',
+                      cursor: 'pointer',
+                      transition: 'var(--transition)',
+                      backgroundColor: isSelected ? 'var(--selected)' : 'transparent',
+                      border: isSelected ? '1px solid var(--border-focus)' : '1px solid var(--border)'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0, marginRight: '12px' }}>
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => {}}
+                        style={{ width: '16px', height: '16px', cursor: 'pointer', flexShrink: 0 }}
+                      />
+                      <span className="truncate text-xs font-medium text-foreground">
+                        {qText}
+                      </span>
+                    </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                      <span className={`badge ${qDiff === 'easy' ? 'badge-success' : qDiff === 'medium' ? 'badge-warning' : 'badge-danger'}`} style={{ fontSize: '10px', padding: '1px 6px' }}>
+                        {qDiff}
+                      </span>
+                      <span className="badge badge-secondary" style={{ fontSize: '10px', textTransform: 'uppercase', padding: '1px 6px' }}>
+                        {qType}
+                      </span>
+                      <span className="text-xs font-bold text-primary font-mono">
+                        {qPoints} pt
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {filteredStudioQuestions.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '26px 16px', color: 'var(--text-muted)', fontSize: '13px' }}>
+                  No questions found in this curriculum. Select another subject or add questions via the Question Bank.
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Performance Grading Policy Section (Setting while scheduling the exam) */}
+          <ExamGradingThresholdEditor
+            value={formGradingThresholds}
+            onChange={setFormGradingThresholds}
+          />
+
+          {/* Bottom Action Bar */}
+          <div className="card flex items-center justify-between p-4" style={{ margin: 0 }}>
+            <div className="text-xs text-muted-foreground">
+              <span className="font-semibold text-foreground">{selectedCollegeIds.length}</span> institutions assigned &bull; <span className="font-semibold text-foreground">{selectedQuestionIds.length > 0 ? selectedQuestionIds.length : `${autoPickCount} (Auto-Pick)`}</span> questions &bull; <span className="font-semibold text-foreground">{formTotalMarks}</span> total marks
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => setActiveView('list')}
+                className="btn btn-secondary"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={submitting}
+                className="btn btn-primary"
+              >
+                {submitting ? 'Creating Assessment...' : 'Create & Assign Assessment'}
+              </button>
             </div>
           </div>
         </form>

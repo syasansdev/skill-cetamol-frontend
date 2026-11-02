@@ -12,6 +12,7 @@ import {
 import api from '../services/api';
 import { cleanPhotoUrl } from '../utils/imageHelper';
 import { ActiveInvigilationExtensions } from '../components/ActiveInvigilationExtensions';
+import { ExamGradingThresholdEditor, DEFAULT_GRADING_TIERS, GradingThresholdItem } from '../components/PerformanceThresholdConfig';
 import { useToast } from '../contexts/ToastContext';
 import { useAuth } from '../contexts/AuthContext';
 import { Question, Exam, ExamResult, Subject, QuestionType, Portion, Note, UploadedDocument } from '../types';
@@ -141,6 +142,7 @@ export const FacultyDashboard: React.FC = () => {
   const [examMarksPerQuestion, setExamMarksPerQuestion] = useState<number>(1);
   const [examNegativeMarks, setExamNegativeMarks] = useState<number>(0.25);
   const [examQuestionsSelected, setExamQuestionsSelected] = useState<string[]>([]);
+  const [examGradingThresholds, setExamGradingThresholds] = useState<GradingThresholdItem[]>(DEFAULT_GRADING_TIERS);
 
   // Departments and Courses States
   const [departments, setDepartments] = useState<any[]>([]);
@@ -682,6 +684,7 @@ export const FacultyDashboard: React.FC = () => {
         negativeMarking: examNegativeMarking,
         marksPerQuestion: examMarksPerQuestion,
         negativeMarks: examNegativeMarking ? examNegativeMarks : 0,
+        gradingThresholds: examGradingThresholds,
         createdBy: user?.id,
         status: 'scheduled'
       });
@@ -700,6 +703,7 @@ export const FacultyDashboard: React.FC = () => {
       setExamMarksPerQuestion(1);
       setExamNegativeMarks(0.25);
       setExamQuestionsSelected([]);
+      setExamGradingThresholds(DEFAULT_GRADING_TIERS);
       fetchData();
     } catch (err: any) {
       console.error('Error scheduling exam:', err);
@@ -1625,6 +1629,12 @@ export const FacultyDashboard: React.FC = () => {
                     </div>
                   )}
                 </div>
+
+                {/* Performance Grading Policy (Setting while scheduling the exam) */}
+                <ExamGradingThresholdEditor
+                  value={examGradingThresholds}
+                  onChange={setExamGradingThresholds}
+                />
 
                 {/* Question selectors list */}
                 <div className="form-group">

@@ -469,8 +469,29 @@ export const StudentDashboard: React.FC = () => {
               </thead>
               <tbody>
                 {results.map(r => {
-                  const cat = r.performanceCategory || (r.percentage >= 90 ? 'Exceptional' : r.percentage >= 75 ? 'Good' : r.percentage >= 50 ? 'Average' : 'Needs Improvement');
-                  const catColor = cat === 'Exceptional' ? '#10b981' : cat === 'Good' ? '#3b82f6' : cat === 'Average' ? '#f59e0b' : '#ef4444';
+                  let cat = r.grade || r.performanceCategory;
+                  if (!cat) {
+                    if (r.percentage >= 90) cat = 'Outstanding';
+                    else if (r.percentage >= 75) cat = 'Proficient';
+                    else if (r.percentage >= 60) cat = 'Competent';
+                    else if (r.percentage >= 40) cat = 'Developing';
+                    else cat = 'Needs Improvement';
+                  } else {
+                    const l = cat.toLowerCase();
+                    if (l === 'exceptional' || l === 'outstanding') cat = 'Outstanding';
+                    else if (l === 'good' || l === 'proficient') cat = 'Proficient';
+                    else if (l === 'competent') cat = 'Competent';
+                    else if (l === 'average' || l === 'developing') cat = 'Developing';
+                    else if (l.includes('need') || l.includes('improv')) cat = 'Needs Improvement';
+                  }
+                  const tierConfig: Record<string, { color: string; emoji: string }> = {
+                    'Outstanding': { color: '#10b981', emoji: '🌟' },
+                    'Proficient': { color: '#3b82f6', emoji: '🎯' },
+                    'Competent': { color: '#06b6d4', emoji: '✅' },
+                    'Developing': { color: '#f59e0b', emoji: '📈' },
+                    'Needs Improvement': { color: '#ef4444', emoji: '⚠️' }
+                  };
+                  const currentConf = tierConfig[cat] || { color: '#94a3b8', emoji: '📊' };
 
                   return (
                     <tr key={r.id}>
@@ -480,15 +501,19 @@ export const StudentDashboard: React.FC = () => {
                       <td><strong style={{ fontSize: '14px' }}>{r.percentage}%</strong></td>
                       <td>
                         <span style={{
-                          padding: '3px 10px',
+                          padding: '4px 10px',
                           borderRadius: '9999px',
                           fontSize: '11px',
                           fontWeight: 700,
-                          backgroundColor: `${catColor}15`,
-                          color: catColor,
-                          border: `1px solid ${catColor}`
+                          backgroundColor: `${currentConf.color}15`,
+                          color: currentConf.color,
+                          border: `1px solid ${currentConf.color}`,
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px'
                         }}>
-                          {cat}
+                          <span>{currentConf.emoji}</span>
+                          <span>{cat}</span>
                         </span>
                       </td>
                       <td>{Math.floor(r.timeTaken / 60)}m {r.timeTaken % 60}s</td>
@@ -657,7 +682,7 @@ export const StudentDashboard: React.FC = () => {
             <div className="card" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
               <h3 className="card-title" style={{ width: '100%', marginBottom: '6px' }}>2. Classification Distribution</h3>
               <p style={{ width: '100%', fontSize: '13px', color: 'var(--text-muted)', marginBottom: '12px' }}>
-                Breakdown across Exceptional, Good, Average, and Needs Improvement.
+                Breakdown across Outstanding, Proficient, Competent, Developing, and Needs Improvement.
               </p>
               <div style={{ width: '100%', height: '200px' }}>
                 {analytics?.categoryDistribution && analytics.categoryDistribution.some(c => c.count > 0) ? (

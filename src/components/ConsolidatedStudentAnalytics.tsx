@@ -238,20 +238,40 @@ export const ConsolidatedStudentAnalytics: React.FC<Props> = ({ userRole, userCo
     showToast('Student performance data exported successfully', 'success');
   };
 
-  const getCategoryBadgeClass = (category: string) => {
-    switch (category) {
-      case 'Exceptional': return 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-400 dark:border-emerald-800';
-      case 'Good': return 'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/40 dark:text-blue-400 dark:border-blue-800';
-      case 'Average': return 'bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/40 dark:text-amber-400 dark:border-amber-800';
-      default: return 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-400 dark:border-rose-800';
+  const normalizeTier = (category?: string | null): { key: string; emoji: string; color: string; badgeClass: string } => {
+    if (!category) return { key: 'Developing', emoji: '📈', color: '#f59e0b', badgeClass: 'bg-amber-500/10 text-amber-500 border-amber-500/30' };
+    const lower = category.toLowerCase().trim();
+    if (lower === 'exceptional' || lower === 'outstanding') {
+      return { key: 'Outstanding', emoji: '🌟', color: '#10b981', badgeClass: 'bg-emerald-500/10 text-emerald-500 border-emerald-500/30' };
     }
+    if (lower === 'good' || lower === 'proficient') {
+      return { key: 'Proficient', emoji: '🎯', color: '#3b82f6', badgeClass: 'bg-blue-500/10 text-blue-500 border-blue-500/30' };
+    }
+    if (lower === 'competent') {
+      return { key: 'Competent', emoji: '✅', color: '#06b6d4', badgeClass: 'bg-cyan-500/10 text-cyan-500 border-cyan-500/30' };
+    }
+    if (lower === 'average' || lower === 'developing') {
+      return { key: 'Developing', emoji: '📈', color: '#f59e0b', badgeClass: 'bg-amber-500/10 text-amber-500 border-amber-500/30' };
+    }
+    if (lower.includes('need') || lower.includes('improv')) {
+      return { key: 'Needs Improvement', emoji: '⚠️', color: '#ef4444', badgeClass: 'bg-rose-500/10 text-rose-500 border-rose-500/30' };
+    }
+    return { key: category, emoji: '📊', color: '#94a3b8', badgeClass: 'bg-slate-500/10 text-slate-400 border-slate-500/30' };
+  };
+
+  const getCategoryBadgeClass = (category: string) => {
+    return normalizeTier(category).badgeClass;
   };
 
   const CATEGORY_COLORS: Record<string, string> = {
+    'Outstanding': '#10b981',
+    'Proficient': '#3b82f6',
+    'Competent': '#06b6d4',
+    'Developing': '#f59e0b',
+    'Needs Improvement': '#ef4444',
     'Exceptional': '#10b981',
     'Good': '#3b82f6',
-    'Average': '#f59e0b',
-    'Needs Improvement': '#f43f5e'
+    'Average': '#f59e0b'
   };
 
   return (
@@ -354,10 +374,11 @@ export const ConsolidatedStudentAnalytics: React.FC<Props> = ({ userRole, userCo
               style={{ padding: '8px 12px', fontSize: '13px' }}
             >
               <option value="all">All Categories</option>
-              <option value="Exceptional">Exceptional (90-100%)</option>
-              <option value="Good">Good (75-89%)</option>
-              <option value="Average">Average (50-74%)</option>
-              <option value="Needs Improvement">Needs Improvement (&lt;50%)</option>
+              <option value="Outstanding">🌟 Outstanding (90-100%)</option>
+              <option value="Proficient">🎯 Proficient (75-89%)</option>
+              <option value="Competent">✅ Competent (60-74%)</option>
+              <option value="Developing">📈 Developing (40-59%)</option>
+              <option value="Needs Improvement">⚠️ Needs Improvement (&lt;40%)</option>
             </select>
           </div>
 
@@ -387,7 +408,7 @@ export const ConsolidatedStudentAnalytics: React.FC<Props> = ({ userRole, userCo
         </div>
       </div>
 
-      {/* KPI Cards (Feature 7) */}
+      {/* KPI Cards */}
       <div className="dashboard-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
         {/* Total Students */}
         <div className="stat-card">
@@ -438,12 +459,12 @@ export const ConsolidatedStudentAnalytics: React.FC<Props> = ({ userRole, userCo
         </div>
 
         {/* Students Needing Improvement */}
-        <div className="stat-card" style={{ borderLeft: '3px solid #ef4444' }}>
+        <div className="stat-card">
           <div className="stat-icon" style={{ color: '#ef4444', backgroundColor: 'rgba(239, 68, 68, 0.15)' }}>
             <AlertTriangle size={22} />
           </div>
           <div className="stat-info">
-            <span className="stat-label" style={{ color: '#ef4444' }}>Need Improvement</span>
+            <span className="stat-label" style={{ color: '#ef4444' }}>Needs Improvement</span>
             <span className="stat-value" style={{ color: '#ef4444' }}>{loading ? '...' : (data?.studentsNeedingImprovement ?? 0)}</span>
             <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '2px' }}>Require academic support</span>
           </div>
@@ -451,11 +472,13 @@ export const ConsolidatedStudentAnalytics: React.FC<Props> = ({ userRole, userCo
       </div>
 
       {/* Visual Analytics Charts */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
         {/* Performance Classification Distribution (Donut Chart) */}
-        <div className="p-5 rounded-xl border border-border bg-card shadow-sm">
-          <h3 className="text-base font-semibold text-foreground mb-1">Performance Classification Distribution</h3>
-          <p className="text-xs text-muted-foreground mb-4">Breakdown of students across the four performance tiers</p>
+        <div className="p-5 rounded-xl border border-border bg-card shadow-sm flex flex-col justify-between" style={{ minHeight: '390px' }}>
+          <div>
+            <h3 className="text-base font-semibold text-foreground mb-1">Performance Classification Distribution</h3>
+            <p className="text-xs text-muted-foreground mb-4">Breakdown of students across the five performance tiers</p>
+          </div>
           
           {data?.categoryDistribution && data.categoryDistribution.some(c => c.count > 0) ? (
             <div style={{ height: '300px', width: '100%' }}>
@@ -471,24 +494,31 @@ export const ConsolidatedStudentAnalytics: React.FC<Props> = ({ userRole, userCo
                     outerRadius={85}
                     paddingAngle={4}
                   >
-                    {data.categoryDistribution.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={CATEGORY_COLORS[entry.category] || '#64748b'} />
-                    ))}
+                    {data.categoryDistribution.map((entry, index) => {
+                      const t = normalizeTier(entry.category);
+                      return <Cell key={`cell-${index}`} fill={t.color} />;
+                    })}
                   </Pie>
                   <Tooltip 
-                    formatter={(val: any, name: any) => [`${val} students`, name]}
+                    formatter={(val: any, name: any) => {
+                      const t = normalizeTier(name);
+                      return [`${val} students`, `${t.emoji} ${t.key}`];
+                    }}
                     contentStyle={{ backgroundColor: 'var(--bg-card, #1e293b)', borderColor: 'var(--border, #334155)', borderRadius: '8px', fontSize: '12px', color: '#f8fafc' }}
                   />
                   <Legend 
                     verticalAlign="bottom" 
                     height={40} 
-                    formatter={(val) => <span style={{ fontSize: '12px', color: 'var(--text-main, #f8fafc)', margin: '0 4px' }}>{val}</span>}
+                    formatter={(val) => {
+                      const t = normalizeTier(val);
+                      return <span style={{ fontSize: '12px', color: 'var(--text-main, #f8fafc)', margin: '0 6px' }}>{t.emoji} {t.key}</span>;
+                    }}
                   />
                 </PieChart>
               </ResponsiveContainer>
             </div>
           ) : (
-            <div className="h-64 flex flex-col items-center justify-center text-muted-foreground text-sm">
+            <div className="flex flex-col items-center justify-center text-muted-foreground text-sm" style={{ height: '300px' }}>
               <BarChart3 className="w-8 h-8 opacity-40 mb-2" />
               No completed assessment records found for this filter criteria.
             </div>
@@ -496,9 +526,11 @@ export const ConsolidatedStudentAnalytics: React.FC<Props> = ({ userRole, userCo
         </div>
 
         {/* Subject-Wise Performance Comparison */}
-        <div className="p-5 rounded-xl border border-border bg-card shadow-sm">
-          <h3 className="text-base font-semibold text-foreground mb-1">Subject-Wise Average Performance</h3>
-          <p className="text-xs text-muted-foreground mb-4">Average student percentage scores by subject curriculum</p>
+        <div className="p-5 rounded-xl border border-border bg-card shadow-sm flex flex-col justify-between" style={{ minHeight: '390px' }}>
+          <div>
+            <h3 className="text-base font-semibold text-foreground mb-1">Subject-Wise Average Performance</h3>
+            <p className="text-xs text-muted-foreground mb-4">Average student percentage scores by subject curriculum</p>
+          </div>
 
           {data?.subjectPerformance && data.subjectPerformance.length > 0 ? (
             <div style={{ height: '300px', width: '100%' }}>
@@ -508,7 +540,7 @@ export const ConsolidatedStudentAnalytics: React.FC<Props> = ({ userRole, userCo
                   <XAxis 
                     dataKey="subject" 
                     tick={{ fontSize: 11, fill: 'var(--text-muted, #94a3b8)' }} 
-                    angle={-25} 
+                    angle={-20} 
                     textAnchor="end"
                     interval={0}
                     height={65}
@@ -523,7 +555,7 @@ export const ConsolidatedStudentAnalytics: React.FC<Props> = ({ userRole, userCo
               </ResponsiveContainer>
             </div>
           ) : (
-            <div className="h-64 flex flex-col items-center justify-center text-muted-foreground text-sm">
+            <div className="flex flex-col items-center justify-center text-muted-foreground text-sm" style={{ height: '300px' }}>
               <BarChart3 className="w-8 h-8 opacity-40 mb-2" />
               No subject performance data available.
             </div>
@@ -533,14 +565,14 @@ export const ConsolidatedStudentAnalytics: React.FC<Props> = ({ userRole, userCo
 
       {/* Student Performance Table & At-Risk Section */}
       <div className="rounded-xl border border-border bg-card shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-border flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-muted/20">
+        <div className="p-4 border-b border-border flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-muted/20">
           <div>
             <h3 className="text-base font-semibold text-foreground">Individual Student Performance Directory</h3>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs text-muted-foreground mt-0.5">
               Review student-level performance metrics, test completions, and open detailed student profiles.
             </p>
           </div>
-          <div style={{ position: 'relative', width: '100%', maxWidth: '280px' }}>
+          <div style={{ position: 'relative', width: '100%', maxWidth: '280px', flexShrink: 0 }}>
             <Search size={15} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted, #94a3b8)', pointerEvents: 'none' }} />
             <input
               type="text"
@@ -596,9 +628,15 @@ export const ConsolidatedStudentAnalytics: React.FC<Props> = ({ userRole, userCo
                     {st.highestScore}%
                   </td>
                   <td className="py-3 px-4 text-center">
-                    <span className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${getCategoryBadgeClass(st.performanceCategory)}`}>
-                      {st.performanceCategory}
-                    </span>
+                    {(() => {
+                      const tier = normalizeTier(st.performanceCategory);
+                      return (
+                        <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold border ${tier.badgeClass}`}>
+                          <span>{tier.emoji}</span>
+                          <span>{tier.key}</span>
+                        </span>
+                      );
+                    })()}
                   </td>
                   <td className="py-3 px-4 text-right">
                     <button
@@ -778,9 +816,15 @@ export const ConsolidatedStudentAnalytics: React.FC<Props> = ({ userRole, userCo
                         <h3 className="text-2xl font-bold tracking-tight text-white">
                           {studentProfile.student?.name}
                         </h3>
-                        <span className={`px-3 py-0.5 rounded-full text-xs font-semibold border ${getCategoryBadgeClass(studentProfile.metrics?.performanceCategory || 'Exceptional')}`}>
-                          {studentProfile.metrics?.performanceCategory || 'Exceptional'}
-                        </span>
+                        {(() => {
+                          const t = normalizeTier(studentProfile.metrics?.performanceCategory || (studentProfile as any).summary?.overallCategory);
+                          return (
+                            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border ${t.badgeClass}`}>
+                              <span>{t.emoji}</span>
+                              <span>{t.key}</span>
+                            </span>
+                          );
+                        })()}
                       </div>
                       
                       <div className="flex flex-wrap items-center gap-2 text-xs text-slate-300">
@@ -1006,9 +1050,15 @@ export const ConsolidatedStudentAnalytics: React.FC<Props> = ({ userRole, userCo
                                 </span>
                               </td>
                               <td className="py-3.5 px-4 text-center whitespace-nowrap">
-                                <span className={`inline-block px-3 py-0.5 rounded-full text-[11px] font-semibold border ${getCategoryBadgeClass(a.category)}`}>
-                                  {a.category}
-                                </span>
+                                {(() => {
+                                  const t = normalizeTier(a.category);
+                                  return (
+                                    <span className={`inline-flex items-center gap-1 px-3 py-0.5 rounded-full text-[11px] font-semibold border ${t.badgeClass}`}>
+                                      <span>{t.emoji}</span>
+                                      <span>{t.key}</span>
+                                    </span>
+                                  );
+                                })()}
                               </td>
                               <td className="py-3.5 px-4 text-right text-slate-400 font-mono">
                                 {Math.floor(a.timeSpentSeconds / 60)}m {a.timeSpentSeconds % 60}s

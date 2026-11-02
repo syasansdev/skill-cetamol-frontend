@@ -18,7 +18,6 @@ import api from '../services/api';
 import { cleanPhotoUrl } from '../utils/imageHelper';
 import { ConsolidatedStudentAnalytics } from '../components/ConsolidatedStudentAnalytics';
 import { ActiveInvigilationExtensions } from '../components/ActiveInvigilationExtensions';
-import { PerformanceThresholdConfig } from '../components/PerformanceThresholdConfig';
 import { CentralizedAssessmentStudio } from '../components/CentralizedAssessmentStudio';
 
 export const AdminDashboard: React.FC = () => {
@@ -40,6 +39,17 @@ export const AdminDashboard: React.FC = () => {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [results, setResults] = useState<any[]>([]);
   const [lockedExams, setLockedExams] = useState<any[]>([]);
+  const [resultsSearch, setResultsSearch] = useState<string>('');
+  const [resultsPage, setResultsPage] = useState<number>(1);
+  const [resultsPageSize, setResultsPageSize] = useState<number>(15);
+
+  const getGradeTier = (pct: number) => {
+    if (pct >= 90) return { label: 'Outstanding', emoji: '🌟', color: '#10b981' };
+    if (pct >= 75) return { label: 'Proficient', emoji: '🎯', color: '#3b82f6' };
+    if (pct >= 60) return { label: 'Competent', emoji: '✅', color: '#06b6d4' };
+    if (pct >= 40) return { label: 'Developing', emoji: '📈', color: '#f59e0b' };
+    return { label: 'Needs Improvement', emoji: '⚠️', color: '#ef4444' };
+  };
   
   // File Upload states
   const [uploadType, setUploadType] = useState<string>('students');
@@ -642,6 +652,21 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
+  const handleDeleteSubject = async (id: string, name: string) => {
+    if (window.confirm(`Are you sure you want to delete subject "${name}"?\n\nWARNING: This will permanently remove this subject, its questions from the Question Bank, question paper extractions, and cleanly dissociate it across the entire application.`)) {
+      try {
+        await api.delete(`/admin/subjects/${id}`);
+        showToast(`Subject "${name}" and its associated questions deleted successfully.`, 'info');
+        if (selectedSubjectFilter === id) {
+          setSelectedSubjectFilter('');
+        }
+        fetchData();
+      } catch (err: any) {
+        showToast(err.response?.data?.message || 'Error deleting subject.', 'error');
+      }
+    }
+  };
+
   const handleRevokeExam = async (id: string) => {
     if (window.confirm('Are you sure you want to revoke exam access for this student? This will submit their exam with current answers.')) {
       try {
@@ -778,19 +803,28 @@ export const AdminDashboard: React.FC = () => {
       showToast('No report records to export.', 'warning');
       return;
     }
-    const headers = ['Student Roll No', 'Student Name', 'Exam Title', 'Score Secured', 'Total Points', 'Percentage', 'Status', 'Submitted At'];
+    const headers = ['Student Roll No', 'Student Name', 'College', 'Department', 'Exam Title', 'Score Secured', 'Total Points', 'Percentage', 'Grade', 'Status', 'Submitted At'];
     const csvRows = [
       headers.join(','),
-      ...results.map(r => [
-        `"${r.studentRollNo || ''}"`,
-        `"${r.studentName || ''}"`,
-        `"${r.examTitle || ''}"`,
-        r.score,
-        r.totalPoints,
-        `"${r.percentage}%"`,
-        `"${r.status}"`,
-        `"${new Date(r.submittedAt).toLocaleString()}"`
-      ].join(','))
+      ...results.map(r => {
+        const pct = r.percentage || 0;
+        const pts = r.totalPoints || 100;
+        const sc = (r.score !== undefined && r.score !== null && r.score > 0) ? r.score : Math.round((pct / 100) * pts);
+        const g = getGradeTier(pct);
+        return [
+          `"${r.studentRollNo || ''}"`,
+          `"${r.studentName || ''}"`,
+          `"${r.collegeName || ''}"`,
+          `"${r.departmentName || ''}"`,
+          `"${r.examTitle || ''}"`,
+          sc,
+          pts,
+          `"${pct}%"`,
+          `"${g.label}"`,
+          `"${r.status || (pct >= 40 ? 'pass' : 'fail')}"`,
+          `"${new Date(r.submittedAt).toLocaleString()}"`
+        ].join(',');
+      })
     ].join('\n');
 
     const blob = new Blob([csvRows], { type: 'text/csv' });
@@ -1485,9 +1519,13 @@ export const AdminDashboard: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {colleges.map(c => (
+                  {colleges.map((c: any, idx: number) => (
                     <tr key={c.id}>
-                      <td><code>{c.id}</code></td>
+                      <td>
+                        <span className="badge badge-primary font-mono" style={{ fontSize: '13px', fontWeight: 700, padding: '3px 9px' }}>
+                          {c.collegeIdNumber ?? c.creationNumber ?? (idx + 1)}
+                        </span>
+                      </td>
                       <td><strong>{c.code || '--'}</strong></td>
                       <td>{c.collegeName}</td>
                       <td>
@@ -1584,6 +1622,7 @@ export const AdminDashboard: React.FC = () => {
                     <th>Subject Code</th>
                     <th>Subject Name</th>
                     <th>Course Program</th>
+                    <th style={{ textAlign: 'right' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1594,6 +1633,15 @@ export const AdminDashboard: React.FC = () => {
                         <td><code>{s.code}</code></td>
                         <td style={{ fontWeight: 600 }}>{s.name}</td>
                         <td>{crs ? crs.name : 'Unknown'}</td>
+                        <td style={{ textAlign: 'right' }}>
+                          <button
+                            className="btn btn-secondary btn-sm"
+                            style={{ color: 'var(--danger)', borderColor: 'var(--danger)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                            onClick={() => handleDeleteSubject(s.id, s.name)}
+                          >
+                            <Trash2 size={13} /> Delete
+                          </button>
+                        </td>
                       </tr>
                     );
                   })}
@@ -1679,15 +1727,32 @@ export const AdminDashboard: React.FC = () => {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <select
-              className="form-control"
-              style={{ width: 'auto' }}
-              value={selectedSubjectFilter}
-              onChange={(e) => setSelectedSubjectFilter(e.target.value)}
-            >
-              <option value="">All Subjects</option>
-              {subjects.map(s => <option key={s.id} value={s.id}>{s.name} ({s.code})</option>)}
-            </select>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <select
+                className="form-control"
+                style={{ width: 'auto' }}
+                value={selectedSubjectFilter}
+                onChange={(e) => setSelectedSubjectFilter(e.target.value)}
+              >
+                <option value="">All Subjects</option>
+                {subjects.map(s => <option key={s.id} value={s.id}>{s.name} ({s.code})</option>)}
+              </select>
+              {selectedSubjectFilter && (
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  style={{ color: 'var(--danger)', borderColor: 'var(--danger)', display: 'inline-flex', alignItems: 'center', gap: '4px', whiteSpace: 'nowrap' }}
+                  title="Delete this selected subject and all its questions"
+                  onClick={() => {
+                    const found = subjects.find(s => s.id === selectedSubjectFilter);
+                    if (found) handleDeleteSubject(found.id, found.name);
+                  }}
+                >
+                  <Trash2 size={13} />
+                  Delete Subject
+                </button>
+              )}
+            </div>
             <select
               className="form-control"
               style={{ width: 'auto' }}
@@ -1758,7 +1823,22 @@ export const AdminDashboard: React.FC = () => {
                             </div>
                           )}
                         </td>
-                        <td>{subObj ? `${subObj.name} (${subObj.code})` : 'Unknown'}</td>
+                        <td>
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                            <span>{subObj ? `${subObj.name} (${subObj.code})` : 'Unknown'}</span>
+                            {subObj && (
+                              <button
+                                type="button"
+                                className="btn btn-secondary btn-sm"
+                                style={{ padding: '2px 5px', fontSize: '10px', color: 'var(--danger)', borderColor: 'transparent' }}
+                                title={`Delete subject "${subObj.name}" and all its questions`}
+                                onClick={() => handleDeleteSubject(subObj.id, subObj.name)}
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            )}
+                          </div>
+                        </td>
                         <td><span className="badge badge-info" style={{ textTransform: 'uppercase' }}>{q.type}</span></td>
                         <td>
                           <span className={`badge ${q.difficulty === 'easy' ? 'badge-success' : q.difficulty === 'medium' ? 'badge-warning' : 'badge-danger'}`}>
@@ -1931,58 +2011,170 @@ export const AdminDashboard: React.FC = () => {
       {/* ==========================================
           REPORTS & ANALYTICS SUB-VIEW
           ========================================== */}
-      {(activeTab === 'results' || activeTab === 'reports') && (
-        <div className="card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
-            <div>
-              <h3 className="card-title" style={{ margin: 0 }}>Historical Student Performance Analytics</h3>
-              <p style={{ color: 'var(--text-muted)', fontSize: '13px', margin: '4px 0 0 0' }}>
-                Aggregated summary showing pass rates, score distributions, and rank registries across departments.
-              </p>
-            </div>
-            <button
-              className="btn btn-secondary btn-sm"
-              onClick={handleExportReportsCSV}
-              style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-            >
-              Export Reports (CSV)
-            </button>
-          </div>
+      {(activeTab === 'results' || activeTab === 'reports') && (() => {
+        const filteredResultsList = (results || []).filter(r => {
+          if (!resultsSearch.trim()) return true;
+          const term = resultsSearch.toLowerCase();
+          return (
+            (r.studentName && r.studentName.toLowerCase().includes(term)) ||
+            (r.studentRollNo && r.studentRollNo.toLowerCase().includes(term)) ||
+            (r.examTitle && r.examTitle.toLowerCase().includes(term)) ||
+            (r.subjectName && r.subjectName.toLowerCase().includes(term)) ||
+            (r.collegeName && r.collegeName.toLowerCase().includes(term))
+          );
+        });
+        const totalResultsPages = Math.ceil(filteredResultsList.length / resultsPageSize) || 1;
+        const paginatedResults = filteredResultsList.slice((resultsPage - 1) * resultsPageSize, resultsPage * resultsPageSize);
 
-          <div className="table-responsive">
-            <table className="enterprise-table">
-              <thead>
-                <tr>
-                  <th>Student Roll No</th>
-                  <th>Student Name</th>
-                  <th>Exam Title</th>
-                  <th>Score Secured</th>
-                  <th>Percentage</th>
-                  <th>Status</th>
-                  <th>Submitted At</th>
-                </tr>
-              </thead>
-              <tbody>
-                {results.map(r => (
-                  <tr key={r.id}>
-                    <td><code>{r.studentRollNo}</code></td>
-                    <td style={{ fontWeight: 600 }}>{r.studentName}</td>
-                    <td>{r.examTitle}</td>
-                    <td>{r.score} / {r.totalPoints}</td>
-                    <td><strong>{r.percentage}%</strong></td>
-                    <td>
-                      <span className={`badge ${r.status === 'pass' ? 'badge-success' : 'badge-danger'}`}>
-                        {r.status}
-                      </span>
-                    </td>
-                    <td>{new Date(r.submittedAt).toLocaleString()}</td>
+        return (
+          <div className="card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '14px' }}>
+              <div>
+                <h3 className="card-title" style={{ margin: 0 }}>Historical Student Performance Analytics</h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: '13px', margin: '4px 0 0 0' }}>
+                  Aggregated student marks, grades, score distributions, and submission registries across institutions.
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <div style={{ position: 'relative', width: '260px' }}>
+                  <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                  <input
+                    type="text"
+                    placeholder="Search student, roll no, or exam..."
+                    value={resultsSearch}
+                    onChange={(e) => { setResultsSearch(e.target.value); setResultsPage(1); }}
+                    className="form-control"
+                    style={{ paddingLeft: '32px', height: '34px', fontSize: '12.5px' }}
+                  />
+                </div>
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={handleExportReportsCSV}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '34px' }}
+                >
+                  Export Reports (CSV)
+                </button>
+              </div>
+            </div>
+
+            <div className="table-responsive">
+              <table className="enterprise-table">
+                <thead>
+                  <tr>
+                    <th>Student Roll No</th>
+                    <th>Student Name</th>
+                    <th>Institution / College</th>
+                    <th>Exam Title</th>
+                    <th style={{ textAlign: 'center' }}>Score Secured</th>
+                    <th style={{ textAlign: 'center' }}>Percentage</th>
+                    <th style={{ textAlign: 'center' }}>Grade Awarded</th>
+                    <th style={{ textAlign: 'center' }}>Status</th>
+                    <th>Submitted At</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {paginatedResults.map(r => {
+                    const pct = r.percentage || 0;
+                    const pts = r.totalPoints || 100;
+                    const sc = (r.score !== undefined && r.score !== null && r.score > 0) ? r.score : Math.round((pct / 100) * pts);
+                    const isPass = r.status === 'pass' || pct >= 40;
+                    const tier = getGradeTier(pct);
+
+                    return (
+                      <tr key={r.id}>
+                        <td><code>{r.studentRollNo || 'N/A'}</code></td>
+                        <td style={{ fontWeight: 600 }}>{r.studentName}</td>
+                        <td style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{r.collegeName || 'N/A'}</td>
+                        <td>{r.examTitle}</td>
+                        <td style={{ textAlign: 'center', fontWeight: 600 }}>
+                          {sc} / {pts}
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <strong style={{ fontSize: '13px', color: pct >= 60 ? '#10b981' : pct >= 40 ? '#f59e0b' : '#ef4444' }}>
+                            {pct}%
+                          </strong>
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px',
+                            padding: '3px 8px',
+                            borderRadius: '9999px',
+                            fontSize: '11px',
+                            fontWeight: 700,
+                            backgroundColor: `${tier.color}15`,
+                            color: tier.color,
+                            border: `1px solid ${tier.color}40`
+                          }}>
+                            <span>{tier.emoji}</span>
+                            <span>{tier.label}</span>
+                          </span>
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <span className={`badge ${isPass ? 'badge-success' : 'badge-danger'}`}>
+                            {isPass ? 'PASS' : 'FAIL'}
+                          </span>
+                        </td>
+                        <td style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                          {new Date(r.submittedAt).toLocaleDateString()} at {new Date(r.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {filteredResultsList.length === 0 && (
+                    <tr>
+                      <td colSpan={9} style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)' }}>
+                        No examination records found matching your query.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Controls */}
+            {filteredResultsList.length > 0 && (
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                paddingTop: '16px',
+                marginTop: '16px',
+                borderTop: '1px solid var(--border)',
+                flexWrap: 'wrap',
+                gap: '12px'
+              }}>
+                <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+                  Showing <strong>{(resultsPage - 1) * resultsPageSize + 1}</strong> to <strong>{Math.min(resultsPage * resultsPageSize, filteredResultsList.length)}</strong> of <strong>{filteredResultsList.length}</strong> evaluation records
+                </span>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    disabled={resultsPage === 1}
+                    onClick={() => setResultsPage(p => Math.max(1, p - 1))}
+                    style={{ opacity: resultsPage === 1 ? 0.4 : 1 }}
+                  >
+                    Previous
+                  </button>
+                  <span style={{ fontSize: '12px', fontWeight: 600, padding: '0 8px' }}>
+                    Page {resultsPage} of {totalResultsPages}
+                  </span>
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    disabled={resultsPage >= totalResultsPages}
+                    onClick={() => setResultsPage(p => Math.min(totalResultsPages, p + 1))}
+                    style={{ opacity: resultsPage >= totalResultsPages ? 0.4 : 1 }}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ==========================================
           EXAM PROCTORING MONITOR SUB-VIEW
@@ -2197,10 +2389,7 @@ export const AdminDashboard: React.FC = () => {
           SETTINGS SUB-VIEW
           ========================================== */}
       {activeTab === 'settings' && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          <PerformanceThresholdConfig />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', maxWidth: '600px' }}>
-
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', maxWidth: '680px' }}>
           {/* Profile Photo Card */}
           <div className="card">
             <h3 className="card-title" style={{ marginBottom: '20px' }}>Administrator Profile</h3>
@@ -2297,9 +2486,8 @@ export const AdminDashboard: React.FC = () => {
             </div>
           </div>
         </div>
-        </div>
-        </div>
-      )}
+      </div>
+    )}
 
       {/* ==========================================================
           MODALS SECTION

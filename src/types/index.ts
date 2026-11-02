@@ -37,7 +37,10 @@ export interface Faculty extends User {
 export interface College {
   id: string;
   collegeName: string;
+  name?: string;
   code?: string;
+  collegeIdNumber?: number;
+  creationNumber?: number;
   createdAt?: string;
   departments?: Department[];
   facultyAssigned?: string | null;
@@ -169,6 +172,8 @@ export interface ExamResult {
   totalPoints: number;
   percentage: number;
   status: 'pass' | 'fail';
+  grade?: string;
+  gradeLabel?: string;
   performanceCategory?: PerformanceCategory;
   answers: Record<string, string | string[]>;
   detailedQuestions?: DetailedQuestionReview[];
