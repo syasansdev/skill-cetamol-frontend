@@ -3,7 +3,8 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   FileText, Clock, Play, Award, Trophy, BarChart3, 
   ArrowUpRight, ShieldAlert, AlertCircle, Calendar, ChevronRight, Upload,
-  Filter, RotateCcw, TrendingUp, CheckCircle, XCircle, Sparkles, BookOpen, User
+  Filter, RotateCcw, TrendingUp, CheckCircle, XCircle, Sparkles, BookOpen, User,
+  Download, Printer
 } from 'lucide-react';
 import { 
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, 
@@ -370,6 +371,114 @@ export const StudentDashboard: React.FC = () => {
               )}
             </div>
           </div>
+
+          {/* Completed Test Reports & Download Section */}
+          <div className="card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+              <div>
+                <h3 className="card-title" style={{ margin: 0 }}>My Assessment Reports & Scorecards</h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: '13px', margin: '4px 0 0' }}>Review your past evaluation records, view answers breakdown, or download PDF report cards.</p>
+              </div>
+              {results.length > 0 && (
+                <button className="btn btn-secondary btn-sm" onClick={() => navigate('/student/dashboard?tab=history')}>
+                  View All ({results.length}) <ChevronRight size={14} />
+                </button>
+              )}
+            </div>
+
+            {results.length > 0 ? (
+              <div className="table-responsive">
+                <table className="enterprise-table">
+                  <thead>
+                    <tr>
+                      <th>Exam Title</th>
+                      <th>Subject</th>
+                      <th>Score Secured</th>
+                      <th>Percentage</th>
+                      <th>Performance Tier</th>
+                      <th>Date</th>
+                      <th style={{ textAlign: 'right' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {results.slice(0, 5).map(r => {
+                      let cat = r.grade || r.performanceCategory;
+                      if (!cat) {
+                        if (r.percentage >= 90) cat = 'Outstanding';
+                        else if (r.percentage >= 75) cat = 'Proficient';
+                        else if (r.percentage >= 60) cat = 'Competent';
+                        else if (r.percentage >= 40) cat = 'Developing';
+                        else cat = 'Needs Improvement';
+                      } else {
+                        const l = cat.toLowerCase();
+                        if (l === 'exceptional' || l === 'outstanding') cat = 'Outstanding';
+                        else if (l === 'good' || l === 'proficient') cat = 'Proficient';
+                        else if (l === 'competent') cat = 'Competent';
+                        else if (l === 'average' || l === 'developing') cat = 'Developing';
+                        else if (l.includes('need') || l.includes('improv')) cat = 'Needs Improvement';
+                      }
+                      const tierConfig: Record<string, { color: string; emoji: string }> = {
+                        'Outstanding': { color: '#10b981', emoji: '🌟' },
+                        'Proficient': { color: '#3b82f6', emoji: '🎯' },
+                        'Competent': { color: '#06b6d4', emoji: '✅' },
+                        'Developing': { color: '#f59e0b', emoji: '📈' },
+                        'Needs Improvement': { color: '#ef4444', emoji: '⚠️' }
+                      };
+                      const currentConf = tierConfig[cat] || { color: '#94a3b8', emoji: '📊' };
+
+                      return (
+                        <tr key={r.id}>
+                          <td style={{ fontWeight: 700 }}>{r.examTitle}</td>
+                          <td>{r.subjectName}</td>
+                          <td><strong>{r.score}</strong> / {r.totalPoints}</td>
+                          <td><strong style={{ fontSize: '14px', color: currentConf.color }}>{r.percentage}%</strong></td>
+                          <td>
+                            <span style={{
+                              padding: '3px 8px',
+                              borderRadius: '9999px',
+                              fontSize: '11px',
+                              fontWeight: 700,
+                              backgroundColor: `${currentConf.color}15`,
+                              color: currentConf.color,
+                              border: `1px solid ${currentConf.color}`,
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}>
+                              <span>{currentConf.emoji}</span>
+                              <span>{cat}</span>
+                            </span>
+                          </td>
+                          <td style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+                            {new Date(r.submittedAt).toLocaleDateString()}
+                          </td>
+                          <td style={{ textAlign: 'right' }}>
+                            <div style={{ display: 'inline-flex', gap: '8px', alignItems: 'center' }}>
+                              <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/student/results/${r.id}`)}>
+                                View Scorecard <ArrowUpRight size={13} />
+                              </button>
+                              <button 
+                                className="btn btn-primary btn-sm" 
+                                onClick={() => navigate(`/student/results/${r.id}?print=true`)}
+                                title="Download Official PDF Report Card"
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                              >
+                                <Download size={13} /> PDF
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '14px' }}>
+                You have not completed any examinations yet. When you complete an exam, your score report and downloadable PDF certificate will appear here.
+              </div>
+            )}
+          </div>
         </>
       )}
 
@@ -519,9 +628,19 @@ export const StudentDashboard: React.FC = () => {
                       <td>{Math.floor(r.timeTaken / 60)}m {r.timeTaken % 60}s</td>
                       <td>{new Date(r.submittedAt).toLocaleDateString()}</td>
                       <td style={{ textAlign: 'right' }}>
-                        <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/student/results/${r.id}`)}>
-                          View Report <ArrowUpRight size={13} />
-                        </button>
+                        <div style={{ display: 'inline-flex', gap: '8px', alignItems: 'center' }}>
+                          <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/student/results/${r.id}`)}>
+                            View Report <ArrowUpRight size={13} />
+                          </button>
+                          <button 
+                            className="btn btn-primary btn-sm" 
+                            onClick={() => navigate(`/student/results/${r.id}?print=true`)}
+                            title="Download Official PDF Report Card"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                          >
+                            <Download size={13} /> PDF
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -1031,6 +1150,63 @@ export const StudentDashboard: React.FC = () => {
                 {profileSaving ? 'Saving...' : 'Save Profile'}
               </button>
             </form>
+          </div>
+
+          {/* Test Reports & Downloads inside Profile Area */}
+          <div className="card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div>
+                <h3 className="card-title" style={{ margin: 0 }}>My Assessment Reports</h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: '13px', margin: '4px 0 0' }}>Download or view your official candidate scorecards.</p>
+              </div>
+              <span className="badge badge-secondary">{results.length} Completed</span>
+            </div>
+
+            {results.length > 0 ? (
+              <div className="table-responsive">
+                <table className="enterprise-table">
+                  <thead>
+                    <tr>
+                      <th>Exam</th>
+                      <th>Score</th>
+                      <th>Grade</th>
+                      <th style={{ textAlign: 'right' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {results.map(r => (
+                      <tr key={r.id}>
+                        <td style={{ fontWeight: 600 }}>{r.examTitle}</td>
+                        <td>{r.score} / {r.totalPoints} ({r.percentage}%)</td>
+                        <td>
+                          <span className={`badge ${r.percentage >= 40 ? 'badge-success' : 'badge-danger'}`} style={{ fontSize: '11px' }}>
+                            {r.grade || (r.percentage >= 40 ? 'PASS' : 'FAIL')}
+                          </span>
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <div style={{ display: 'inline-flex', gap: '6px' }}>
+                            <button className="btn btn-secondary btn-sm" onClick={() => navigate(`/student/results/${r.id}`)}>
+                              Report
+                            </button>
+                            <button 
+                              className="btn btn-primary btn-sm" 
+                              onClick={() => navigate(`/student/results/${r.id}?print=true`)}
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                            >
+                              <Download size={12} /> PDF
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div style={{ padding: '20px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
+                No completed examination records found.
+              </div>
+            )}
           </div>
         </div>
       )}

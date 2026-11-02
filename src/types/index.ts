@@ -169,6 +169,10 @@ export interface ExamResult {
   departmentName?: string;
   studentDepartment?: string;
   score: number;
+  grossScore?: number;
+  negativeDeduction?: number;
+  negativeMarkingActive?: boolean;
+  negativeMarks?: number;
   totalPoints: number;
   percentage: number;
   status: 'pass' | 'fail';

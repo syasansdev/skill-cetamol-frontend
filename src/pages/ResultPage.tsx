@@ -37,6 +37,19 @@ export const ResultPage: React.FC = () => {
     fetchResult();
   }, [resultId]);
 
+  // If URL has ?print=true, auto-trigger print dialog once result is loaded
+  useEffect(() => {
+    if (result && !loading) {
+      const searchParams = new URLSearchParams(window.location.search);
+      if (searchParams.get('print') === 'true') {
+        const timer = setTimeout(() => {
+          window.print();
+        }, 700);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [result, loading]);
+
   const handlePrint = () => {
     window.print();
   };
@@ -372,6 +385,11 @@ export const ResultPage: React.FC = () => {
               <span>{currentTheme.emoji}</span>
               <span>Grade: {category}</span>
             </div>
+            {result.negativeMarkingActive && (
+              <div style={{ marginTop: '10px', fontSize: '12px', backgroundColor: 'rgba(0, 0, 0, 0.25)', padding: '6px 12px', borderRadius: '6px', lineHeight: '1.4' }}>
+                <span>Gross: <strong>{result.grossScore ?? result.score}</strong> | Negative Penalty: <strong>-{result.negativeDeduction ?? 0}</strong> (-{result.negativeMarks || 0.25}/incorrect)</span>
+              </div>
+            )}
             <p style={{ fontSize: '13px', opacity: 0.85, margin: '10px 0 0' }}>
               Calculated based on authoritative server evaluation rules.
             </p>

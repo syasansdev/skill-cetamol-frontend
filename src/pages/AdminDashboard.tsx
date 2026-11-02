@@ -482,22 +482,23 @@ export const AdminDashboard: React.FC = () => {
     e.preventDefault();
     setFacEmailError('');
     try {
+      const assignedPwd = facPassword && facPassword.trim() ? facPassword.trim() : 'admin123';
       await api.post('/admin/faculty', {
         name: facName,
         email: facEmail,
-        password: facPassword,
+        password: assignedPwd,
         facultyId: facId,
         collegeId: facCollegeId,
         departmentId: facDeptId,
         role: facRole,
         subjects: facSelectedSubjects
       });
-      showToast(`Account for ${facName} created successfully. A welcome email has been sent.`, 'success');
+      showToast(`Account for ${facName} created! Login Email: ${facEmail} | Password: ${assignedPwd}`, 'success');
       setShowFacultyModal(false);
       // Reset form
       setFacName('');
       setFacEmail('');
-      setFacPassword('');
+      setFacPassword('admin123');
       setFacRole('faculty');
       setFacId('');
       setFacCollegeId('');
@@ -1423,7 +1424,7 @@ export const AdminDashboard: React.FC = () => {
         <div className="card">
           <div className="table-header-controls">
             <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Faculty Members</h3>
-            <button className="btn btn-primary" onClick={() => setShowFacultyModal(true)}>
+            <button className="btn btn-primary" onClick={() => { setFacPassword('admin123'); setShowFacultyModal(true); }}>
               <Plus size={16} /> Add Faculty Account
             </button>
           </div>
@@ -2525,8 +2526,21 @@ export const AdminDashboard: React.FC = () => {
                   )}
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Password</label>
-                  <input type="password" required className="form-control" placeholder="••••••••" value={facPassword} onChange={e => setFacPassword(e.target.value)} />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <label className="form-label">Password</label>
+                    <span style={{ fontSize: '11px', color: 'var(--primary)', fontWeight: 600 }}>Default: admin123</span>
+                  </div>
+                  <input
+                    type="text"
+                    required
+                    className="form-control"
+                    placeholder="admin123"
+                    value={facPassword || 'admin123'}
+                    onChange={e => setFacPassword(e.target.value)}
+                  />
+                  <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
+                    Default login password is <code>admin123</code>. Faculty can use this password to sign in immediately.
+                  </span>
                 </div>
                 <div className="form-group">
                   <label className="form-label">Employee ID / Register Number</label>
@@ -2704,7 +2718,7 @@ export const AdminDashboard: React.FC = () => {
                       <input 
                         type="text" 
                         className="form-control" 
-                        placeholder="e.g. faculty123 (Leave blank for default)" 
+                        placeholder="e.g. admin123 (Leave blank for default)" 
                         value={customResetPassword} 
                         onChange={e => setCustomResetPassword(e.target.value)} 
                       />
@@ -2712,9 +2726,9 @@ export const AdminDashboard: React.FC = () => {
                         <button 
                           type="button" 
                           className="btn btn-secondary btn-sm"
-                          onClick={() => setCustomResetPassword('faculty123')}
+                          onClick={() => setCustomResetPassword('admin123')}
                         >
-                          Use "faculty123"
+                          Use "admin123"
                         </button>
                         <button 
                           type="button" 
