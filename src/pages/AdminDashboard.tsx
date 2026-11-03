@@ -1364,7 +1364,7 @@ export const AdminDashboard: React.FC = () => {
                   })}
                   {pendingStudents.length === 0 && (
                     <tr>
-                      <td colSpan={6} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px' }}>
+                      <td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px' }}>
                         No pending student registration requests.
                       </td>
                     </tr>
@@ -1674,6 +1674,7 @@ export const AdminDashboard: React.FC = () => {
                   <th>Questions</th>
                   <th>Faculty Organizer</th>
                   <th>Status</th>
+                  <th style={{ textAlign: 'right' }}>Actions / Reports</th>
                 </tr>
               </thead>
               <tbody>
@@ -1697,6 +1698,36 @@ export const AdminDashboard: React.FC = () => {
                       <td>{e.questions?.length || 0} items</td>
                       <td>{e.createdByName}</td>
                       <td><span className={`badge ${statusColors[e.status]}`}>{e.status}</span></td>
+                      <td style={{ textAlign: 'right' }}>
+                        <div style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
+                          <button
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => {
+                              setResultsSearch(e.title);
+                              navigate('/admin/dashboard?tab=results');
+                            }}
+                            title="View student submissions for this exam"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                          >
+                            <ArrowUpRight size={13} /> View Results
+                          </button>
+                          <button
+                            className="btn btn-primary btn-sm"
+                            onClick={() => {
+                              const examResults = (results || []).filter(r => r.examId === e.id || r.examTitle === e.title);
+                              if (examResults.length === 0) {
+                                showToast(`No student evaluations recorded yet for "${e.title}".`, 'info');
+                                return;
+                              }
+                              handleExportReportsCSV(examResults);
+                            }}
+                            title="Export CSV report for this exam"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                          >
+                            <Download size={13} /> Download Report
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   );
                 })}

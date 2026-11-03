@@ -1082,6 +1082,7 @@ export const FacultyDashboard: React.FC = () => {
                   <th>Start Time</th>
                   <th>End Time</th>
                   <th>Status</th>
+                  <th style={{ textAlign: 'right' }}>Actions / Reports</th>
                 </tr>
               </thead>
               <tbody>
@@ -1101,12 +1102,42 @@ export const FacultyDashboard: React.FC = () => {
                       <td>{new Date(e.startTime).toLocaleString()}</td>
                       <td>{new Date(e.endTime).toLocaleString()}</td>
                       <td><span className={`badge ${statusColors[e.status]}`}>{e.status}</span></td>
+                      <td style={{ textAlign: 'right' }}>
+                        <div style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
+                          <button
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => {
+                              setResultsExamFilter(e.title);
+                              navigate('/faculty/dashboard?tab=results');
+                            }}
+                            title="View candidate submissions and scorecards"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                          >
+                            <ArrowUpRight size={13} /> View Results
+                          </button>
+                          <button
+                            className="btn btn-primary btn-sm"
+                            onClick={() => {
+                              const examResults = (results || []).filter(r => r.examId === e.id || r.examTitle === e.title);
+                              if (examResults.length === 0) {
+                                showToast(`No student evaluations recorded yet for "${e.title}".`, 'info');
+                                return;
+                              }
+                              handleExportCollegeReportCSV(examResults);
+                            }}
+                            title="Export full college CSV report for this exam"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                          >
+                            <Download size={13} /> Download Report
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   );
                 })}
                 {exams.length === 0 && (
                   <tr>
-                    <td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px' }}>
+                    <td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px' }}>
                       You have not configured or scheduled any exams yet. Click "Schedule New Exam" to launch.
                     </td>
                   </tr>
