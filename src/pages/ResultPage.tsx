@@ -11,12 +11,14 @@ import {
 } from 'recharts';
 import api from '../services/api';
 import { useToast } from '../contexts/ToastContext';
+import { useAuth } from '../contexts/AuthContext';
 import { ExamResult } from '../types';
 
 export const ResultPage: React.FC = () => {
   const { resultId } = useParams<{ resultId: string }>();
   const navigate = useNavigate();
   const { showToast } = useToast();
+  const { user } = useAuth();
 
   const [result, setResult] = useState<ExamResult | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -24,7 +26,16 @@ export const ResultPage: React.FC = () => {
   const fetchResult = async () => {
     setLoading(true);
     try {
-      const response = await api.get(`/student/results/${resultId}`);
+      let response;
+      try {
+        response = await api.get(`/student/results/${resultId}`);
+      } catch (e1) {
+        try {
+          response = await api.get(`/faculty/results/${resultId}`);
+        } catch (e2) {
+          response = await api.get(`/admin/results/${resultId}`);
+        }
+      }
       setResult(response.data);
     } catch (err) {
       showToast('Error retrieving examination results.', 'error');
@@ -273,10 +284,18 @@ export const ResultPage: React.FC = () => {
         <div>
           <button 
             className="btn btn-secondary btn-sm" 
-            onClick={() => navigate('/student/dashboard?tab=history')}
+            onClick={() => {
+              if (user?.role === 'admin') {
+                navigate('/admin/dashboard?tab=results');
+              } else if (user?.role === 'faculty') {
+                navigate('/faculty/dashboard?tab=results');
+              } else {
+                navigate('/student/dashboard?tab=history');
+              }
+            }}
             style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', marginBottom: '8px' }}
           >
-            <ArrowLeft size={14} /> Back to Attempt History
+            <ArrowLeft size={14} /> Back to {user?.role === 'student' ? 'Attempt History' : 'Evaluation Registry'}
           </button>
           <h1 style={{ fontSize: '24px', fontWeight: 800, color: 'var(--text-main)', margin: 0, letterSpacing: '-0.02em' }}>
             Individual Assessment Performance Report

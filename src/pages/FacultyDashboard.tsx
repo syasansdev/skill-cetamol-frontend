@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   Database, FileText, Award, TrendingUp, Plus, 
   Search, Upload, Calendar, Clock, AlertCircle, FileSpreadsheet, Check, X,
-  Users, CheckCircle, BookOpen
+  Users, CheckCircle, BookOpen, Download, ArrowUpRight, Printer
 } from 'lucide-react';
 import { 
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, 
@@ -51,6 +51,12 @@ export const FacultyDashboard: React.FC = () => {
   const [qPaperFile, setQPaperFile] = useState<File | null>(null);
   const [qAnswerFile, setQAnswerFile] = useState<File | null>(null);
   const [uploadingQPaper, setUploadingQPaper] = useState<boolean>(false);
+
+  // Results view states (Feature: College Reports & Individual downloads)
+  const [resultsSearch, setResultsSearch] = useState<string>('');
+  const [resultsExamFilter, setResultsExamFilter] = useState<string>('all');
+  const [resultsPage, setResultsPage] = useState<number>(1);
+  const resultsPageSize = 15;
 
   // Exam questions filtering inside wizard
   const [examQuestionSourceFilter, setExamQuestionSourceFilter] = useState<'all' | 'bank' | 'document'>('all');
@@ -178,13 +184,13 @@ export const FacultyDashboard: React.FC = () => {
       setQuestions(questRes.data);
 
       const examRes = await api.get('/faculty/exams');
-      const filteredExams = examRes.data.filter((e: Exam) => e.createdBy === user?.id || e.title.toLowerCase().includes('quantitative'));
+      const filteredExams = examRes.data || [];
       setExams(filteredExams);
 
       const resultsRes = await api.get('/faculty/results');
       // Filter results for exams belonging to this faculty
       const examIds = filteredExams.map((e: Exam) => e.id);
-      const filteredResults = resultsRes.data.filter((r: ExamResult) => examIds.includes(r.examId));
+      const filteredResults = resultsRes.data || [];
       setResults(filteredResults);
 
       // Pending students approval
@@ -523,6 +529,72 @@ export const FacultyDashboard: React.FC = () => {
     } catch (err: any) {
       showToast(err.response?.data?.message || 'Failed to delete portion.', 'error');
     }
+  };
+
+  const handleExportCollegeReportCSV = (listToExport?: ExamResult[]) => {
+    const data = listToExport || results;
+    if (!data || data.length === 0) {
+      showToast('No student score reports available to export.', 'warning');
+      return;
+    }
+    const headers = [
+      'Roll Number',
+      'Student Name',
+      'College / Institution',
+      'Department',
+      'Exam Title',
+      'Subject',
+      'Score Secured',
+      'Total Marks',
+      'Percentage',
+      'Grade / Classification',
+      'Status',
+      'Time Taken',
+      'Submission Date & Time'
+    ];
+    const csvRows = [
+      headers.join(','),
+      ...data.map(r => {
+        const pct = r.percentage || 0;
+        const pts = r.totalPoints || 100;
+        const sc = (r.score !== undefined && r.score !== null && r.score > 0) ? r.score : Math.round((pct / 100) * pts);
+        let tier = 'Needs Improvement';
+        if (pct >= 90) tier = 'Outstanding';
+        else if (pct >= 75) tier = 'Proficient';
+        else if (pct >= 60) tier = 'Competent';
+        else if (pct >= 40) tier = 'Developing';
+
+        const mins = Math.floor((r.timeTaken || 0) / 60);
+        const secs = (r.timeTaken || 0) % 60;
+        const timeFormatted = `${mins}m ${secs}s`;
+
+        return [
+          `"${r.studentRollNo || ''}"`,
+          `"${r.studentName || ''}"`,
+          `"${r.collegeName || user?.collegeName || 'College'}"`,
+          `"${r.departmentName || (r as any).studentDepartment || ''}"`,
+          `"${r.examTitle || ''}"`,
+          `"${r.subjectName || ''}"`,
+          sc,
+          pts,
+          `"${pct}%"`,
+          `"${tier}"`,
+          `"${r.status || (pct >= 40 ? 'pass' : 'fail')}"`,
+          `"${timeFormatted}"`,
+          `"${new Date(r.submittedAt).toLocaleString()}"`
+        ].join(',');
+      })
+    ].join('\n');
+
+    const blob = new Blob([csvRows], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `college_student_reports_${Date.now()}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast('College student assessment report exported successfully.', 'success');
   };
 
   const handleUploadQPaperSubmit = async (e: React.FormEvent) => {
@@ -1053,54 +1125,202 @@ export const FacultyDashboard: React.FC = () => {
       )}
 
       {/* ==========================================
-          RESULTS & GRADING SUB-VIEW
+          RESULTS & GRADING SUB-VIEW (COLLEGE REPORTS & INDIVIDUAL DOWNLOADS)
           ========================================== */}
-      {activeTab === 'results' && (
-        <div className="card">
-          <h3 className="card-title">Student Score Report Logs</h3>
-          <div className="table-responsive">
-            <table className="enterprise-table">
-              <thead>
-                <tr>
-                  <th>Roll No</th>
-                  <th>Student Name</th>
-                  <th>Exam Title</th>
-                  <th>Score Secured</th>
-                  <th>Percentage</th>
-                  <th>Time Taken</th>
-                  <th>Status</th>
-                  <th>Submission Date</th>
-                </tr>
-              </thead>
-              <tbody>
-                {results.map(r => (
-                  <tr key={r.id}>
-                    <td><code>{r.studentRollNo}</code></td>
-                    <td style={{ fontWeight: 600 }}>{r.studentName}</td>
-                    <td>{r.examTitle}</td>
-                    <td>{r.score} / {r.totalPoints}</td>
-                    <td><strong>{r.percentage}%</strong></td>
-                    <td>{Math.floor(r.timeTaken / 60)}m {r.timeTaken % 60}s</td>
-                    <td>
-                      <span className={`badge ${r.status === 'pass' ? 'badge-success' : 'badge-danger'}`}>
-                        {r.status}
-                      </span>
-                    </td>
-                    <td>{new Date(r.submittedAt).toLocaleDateString()}</td>
-                  </tr>
-                ))}
-                {results.length === 0 && (
+      {activeTab === 'results' && (() => {
+        const uniqueExams = Array.from(
+          new Set((results || []).map(r => r.examTitle).filter(Boolean))
+        ).sort();
+
+        const filteredList = (results || []).filter(r => {
+          if (resultsExamFilter !== 'all' && r.examTitle !== resultsExamFilter) {
+            return false;
+          }
+          if (!resultsSearch.trim()) return true;
+          const term = resultsSearch.toLowerCase();
+          return (
+            (r.studentName && r.studentName.toLowerCase().includes(term)) ||
+            (r.studentRollNo && r.studentRollNo.toLowerCase().includes(term)) ||
+            (r.examTitle && r.examTitle.toLowerCase().includes(term)) ||
+            (r.subjectName && r.subjectName.toLowerCase().includes(term))
+          );
+        });
+
+        const totalPages = Math.ceil(filteredList.length / resultsPageSize) || 1;
+        const paginated = filteredList.slice((resultsPage - 1) * resultsPageSize, resultsPage * resultsPageSize);
+
+        return (
+          <div className="card">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '14px' }}>
+              <div>
+                <h3 className="card-title" style={{ margin: 0 }}>College Student Score Reports & Grading Logs</h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: '13px', margin: '4px 0 0 0' }}>
+                  Aggregated evaluation records, grades, and candidate scorecards for students of your institution.
+                </p>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
+                {/* Exam Title Dropdown Filter */}
+                <select
+                  className="form-control"
+                  value={resultsExamFilter}
+                  onChange={(e) => {
+                    setResultsExamFilter(e.target.value);
+                    setResultsPage(1);
+                  }}
+                  style={{ height: '34px', fontSize: '12.5px', minWidth: '180px' }}
+                >
+                  <option value="all">All Scheduled Assessments ({uniqueExams.length})</option>
+                  {uniqueExams.map(ex => (
+                    <option key={ex} value={ex}>{ex}</option>
+                  ))}
+                </select>
+
+                {/* Search Bar */}
+                <div style={{ position: 'relative', width: '240px' }}>
+                  <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                  <input
+                    type="text"
+                    placeholder="Search student, roll no, or exam..."
+                    value={resultsSearch}
+                    onChange={(e) => { setResultsSearch(e.target.value); setResultsPage(1); }}
+                    className="form-control"
+                    style={{ paddingLeft: '32px', height: '34px', fontSize: '12.5px' }}
+                  />
+                </div>
+
+                {/* Export Entire College Report Button */}
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => handleExportCollegeReportCSV(filteredList)}
+                  title="Export all student score records to spreadsheet"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '34px' }}
+                >
+                  <Download size={14} /> Export College Report (CSV)
+                </button>
+              </div>
+            </div>
+
+            <div className="table-responsive">
+              <table className="enterprise-table">
+                <thead>
                   <tr>
-                    <td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '24px' }}>
-                      No student attempts recorded for your scheduled examinations.
-                    </td>
+                    <th>Roll No</th>
+                    <th>Student Name</th>
+                    <th>Exam Title</th>
+                    <th>Subject</th>
+                    <th style={{ textAlign: 'center' }}>Score Secured</th>
+                    <th style={{ textAlign: 'center' }}>Percentage</th>
+                    <th style={{ textAlign: 'center' }}>Status</th>
+                    <th>Submitted At</th>
+                    <th style={{ textAlign: 'right' }}>Individual Report</th>
                   </tr>
-                )}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {paginated.map(r => {
+                    const pct = r.percentage || 0;
+                    const pts = r.totalPoints || 100;
+                    const sc = (r.score !== undefined && r.score !== null && r.score > 0) ? r.score : Math.round((pct / 100) * pts);
+                    const isPass = r.status === 'pass' || pct >= 40;
+
+                    return (
+                      <tr key={r.id}>
+                        <td><code>{r.studentRollNo || 'N/A'}</code></td>
+                        <td style={{ fontWeight: 600 }}>{r.studentName}</td>
+                        <td>{r.examTitle}</td>
+                        <td style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{r.subjectName}</td>
+                        <td style={{ textAlign: 'center', fontWeight: 600 }}>
+                          {sc} / {pts}
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <strong style={{ fontSize: '13px', color: pct >= 60 ? '#10b981' : pct >= 40 ? '#f59e0b' : '#ef4444' }}>
+                            {pct}%
+                          </strong>
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <span className={`badge ${isPass ? 'badge-success' : 'badge-danger'}`}>
+                            {isPass ? 'PASS' : 'FAIL'}
+                          </span>
+                        </td>
+                        <td style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                          {new Date(r.submittedAt).toLocaleDateString()} at {new Date(r.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <div style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
+                            <button
+                              className="btn btn-secondary btn-sm"
+                              onClick={() => navigate(`/faculty/results/${r.id}`)}
+                              title="View full examination scorecard"
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                            >
+                              <ArrowUpRight size={13} /> View
+                            </button>
+                            <button
+                              className="btn btn-primary btn-sm"
+                              onClick={() => navigate(`/faculty/results/${r.id}?print=true`)}
+                              title="Download official candidate PDF scorecard"
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                            >
+                              <Download size={13} /> PDF
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {filteredList.length === 0 && (
+                    <tr>
+                      <td colSpan={9} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '36px' }}>
+                        No examination submissions found matching the criteria.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Controls */}
+            {filteredList.length > 0 && (
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                paddingTop: '16px',
+                marginTop: '16px',
+                borderTop: '1px solid var(--border)',
+                flexWrap: 'wrap',
+                gap: '12px'
+              }}>
+                <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+                  Showing <strong>{(resultsPage - 1) * resultsPageSize + 1}</strong> to <strong>{Math.min(resultsPage * resultsPageSize, filteredList.length)}</strong> of <strong>{filteredList.length}</strong> college student records
+                </span>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    disabled={resultsPage === 1}
+                    onClick={() => setResultsPage(p => Math.max(1, p - 1))}
+                    style={{ opacity: resultsPage === 1 ? 0.4 : 1 }}
+                  >
+                    Previous
+                  </button>
+                  <span style={{ fontSize: '12px', fontWeight: 600, padding: '0 8px' }}>
+                    Page {resultsPage} of {totalPages}
+                  </span>
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    disabled={resultsPage >= totalPages}
+                    onClick={() => setResultsPage(p => Math.min(totalPages, p + 1))}
+                    style={{ opacity: resultsPage >= totalPages ? 0.4 : 1 }}
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* ==========================================
           BULK QUESTION IMPORTS SUB-VIEW

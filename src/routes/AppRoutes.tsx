@@ -69,6 +69,7 @@ export const AppRoutes: React.FC = () => {
         <Route path="/admin" element={<DashboardLayout />}>
           <Route index element={<Navigate to="/admin/dashboard" replace />} />
           <Route path="dashboard" element={<AdminDashboard />} />
+          <Route path="results/:resultId" element={<ResultPage />} />
           {/* Sub-tabs are handled in the AdminDashboard component via tab state to keep navigation fast and robust */}
         </Route>
       </Route>
@@ -78,6 +79,7 @@ export const AppRoutes: React.FC = () => {
         <Route path="/faculty" element={<DashboardLayout />}>
           <Route index element={<Navigate to="/faculty/dashboard" replace />} />
           <Route path="dashboard" element={<FacultyDashboard />} />
+          <Route path="results/:resultId" element={<ResultPage />} />
         </Route>
       </Route>
 

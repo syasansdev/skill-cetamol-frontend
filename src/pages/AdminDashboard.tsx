@@ -4,7 +4,7 @@ import {
   Users, GraduationCap, FileText, CheckCircle, Clock, 
   Trash2, Plus, Search, Settings, SlidersHorizontal, 
   BookOpen, AlertCircle, Sparkles, Server, Check, X, ShieldAlert, Upload, Edit,
-  Edit3, Key, Copy, Eye, EyeOff
+  Edit3, Key, Copy, Eye, EyeOff, Building2, ArrowUpRight, Download
 } from 'lucide-react';
 import { 
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, 
@@ -40,6 +40,7 @@ export const AdminDashboard: React.FC = () => {
   const [results, setResults] = useState<any[]>([]);
   const [lockedExams, setLockedExams] = useState<any[]>([]);
   const [resultsSearch, setResultsSearch] = useState<string>('');
+  const [selectedCollegeFilter, setSelectedCollegeFilter] = useState<string>('all');
   const [resultsPage, setResultsPage] = useState<number>(1);
   const [resultsPageSize, setResultsPageSize] = useState<number>(15);
 
@@ -799,15 +800,16 @@ export const AdminDashboard: React.FC = () => {
     document.body.removeChild(link);
   };
 
-  const handleExportReportsCSV = () => {
-    if (results.length === 0) {
+  const handleExportReportsCSV = (listToExport?: any[]) => {
+    const data = listToExport || (selectedCollegeFilter !== 'all' ? (results || []).filter(r => r.collegeName === selectedCollegeFilter) : results);
+    if (!data || data.length === 0) {
       showToast('No report records to export.', 'warning');
       return;
     }
     const headers = ['Student Roll No', 'Student Name', 'College', 'Department', 'Exam Title', 'Score Secured', 'Total Points', 'Percentage', 'Grade', 'Status', 'Submitted At'];
     const csvRows = [
       headers.join(','),
-      ...results.map(r => {
+      ...data.map(r => {
         const pct = r.percentage || 0;
         const pts = r.totalPoints || 100;
         const sc = (r.score !== undefined && r.score !== null && r.score > 0) ? r.score : Math.round((pct / 100) * pts);
@@ -832,7 +834,10 @@ export const AdminDashboard: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `academic_performance_report_${Date.now()}.csv`;
+    const filename = selectedCollegeFilter !== 'all'
+      ? `academic_report_${selectedCollegeFilter.replace(/[^a-zA-Z0-9]/g, '_')}_${Date.now()}.csv`
+      : `academic_performance_report_${Date.now()}.csv`;
+    link.download = filename;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -2013,7 +2018,19 @@ export const AdminDashboard: React.FC = () => {
           REPORTS & ANALYTICS SUB-VIEW
           ========================================== */}
       {(activeTab === 'results' || activeTab === 'reports') && (() => {
+        // Dynamic list of unique colleges that have actually attended assessments
+        const attendedColleges = Array.from(
+          new Set(
+            (results || [])
+              .map(r => r.collegeName)
+              .filter((c): c is string => Boolean(c && c !== 'N/A' && c !== 'Unknown' && c.trim()))
+          )
+        ).sort();
+
         const filteredResultsList = (results || []).filter(r => {
+          if (selectedCollegeFilter !== 'all' && r.collegeName !== selectedCollegeFilter) {
+            return false;
+          }
           if (!resultsSearch.trim()) return true;
           const term = resultsSearch.toLowerCase();
           return (
@@ -2036,8 +2053,30 @@ export const AdminDashboard: React.FC = () => {
                   Aggregated student marks, grades, score distributions, and submission registries across institutions.
                 </p>
               </div>
+
               <div style={{ display: 'flex', gap: '10px', alignItems: 'center', flexWrap: 'wrap' }}>
-                <div style={{ position: 'relative', width: '260px' }}>
+                {/* Attended College Filter Dropdown */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Building2 size={15} style={{ color: 'var(--text-muted)' }} />
+                  <select
+                    className="form-control"
+                    value={selectedCollegeFilter}
+                    onChange={(e) => {
+                      setSelectedCollegeFilter(e.target.value);
+                      setResultsPage(1);
+                    }}
+                    style={{ height: '34px', fontSize: '12.5px', minWidth: '220px', maxWidth: '320px' }}
+                    title="Filter by college that has attended examinations"
+                  >
+                    <option value="all">All Attended Colleges ({attendedColleges.length})</option>
+                    {attendedColleges.map(c => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Search input */}
+                <div style={{ position: 'relative', width: '240px' }}>
                   <Search size={14} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
                   <input
                     type="text"
@@ -2048,12 +2087,14 @@ export const AdminDashboard: React.FC = () => {
                     style={{ paddingLeft: '32px', height: '34px', fontSize: '12.5px' }}
                   />
                 </div>
+
+                {/* Export CSV button */}
                 <button
                   className="btn btn-secondary btn-sm"
-                  onClick={handleExportReportsCSV}
+                  onClick={() => handleExportReportsCSV(filteredResultsList)}
                   style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', height: '34px' }}
                 >
-                  Export Reports (CSV)
+                  <Download size={14} /> Export Reports (CSV)
                 </button>
               </div>
             </div>
@@ -2071,6 +2112,7 @@ export const AdminDashboard: React.FC = () => {
                     <th style={{ textAlign: 'center' }}>Grade Awarded</th>
                     <th style={{ textAlign: 'center' }}>Status</th>
                     <th>Submitted At</th>
+                    <th style={{ textAlign: 'right' }}>Report Card</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2120,12 +2162,32 @@ export const AdminDashboard: React.FC = () => {
                         <td style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
                           {new Date(r.submittedAt).toLocaleDateString()} at {new Date(r.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                         </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <div style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
+                            <button
+                              className="btn btn-secondary btn-sm"
+                              onClick={() => navigate(`/admin/results/${r.id}`)}
+                              title="View full examination scorecard"
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                            >
+                              <ArrowUpRight size={13} /> View
+                            </button>
+                            <button
+                              className="btn btn-primary btn-sm"
+                              onClick={() => navigate(`/admin/results/${r.id}?print=true`)}
+                              title="Download official candidate PDF scorecard"
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                            >
+                              <Download size={13} /> PDF
+                            </button>
+                          </div>
+                        </td>
                       </tr>
                     );
                   })}
                   {filteredResultsList.length === 0 && (
                     <tr>
-                      <td colSpan={9} style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)' }}>
+                      <td colSpan={10} style={{ textAlign: 'center', padding: '36px', color: 'var(--text-muted)' }}>
                         No examination records found matching your query.
                       </td>
                     </tr>
