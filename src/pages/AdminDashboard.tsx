@@ -269,6 +269,20 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
+  const handleDeleteExam = async (examId: string) => {
+    if (!window.confirm('Are you sure you want to delete this exam? This action is permanent and will delete all student records and configurations linked to this exam.')) {
+      return;
+    }
+    try {
+      await api.delete(`/faculty/exams/${examId}`);
+      showToast('Exam deleted successfully.', 'success');
+      await fetchData();
+    } catch (err: any) {
+      console.error('Error deleting exam:', err);
+      showToast(err.response?.data?.message || 'Failed to delete exam.', 'error');
+    }
+  };
+
   const handleViewDocQuestionsClick = async (doc: UploadedDocument) => {
     setActiveDocForPreview(doc);
     setSelectedDocumentQuestions([]);
@@ -1725,6 +1739,14 @@ export const AdminDashboard: React.FC = () => {
                             style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                           >
                             <Download size={13} /> Download Report
+                          </button>
+                          <button
+                            className="btn btn-danger btn-sm"
+                            onClick={() => handleDeleteExam(e.id)}
+                            title="Delete Exam"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', backgroundColor: 'var(--danger)', borderColor: 'var(--danger)', color: '#fff' }}
+                          >
+                            <Trash2 size={13} /> Delete
                           </button>
                         </div>
                       </td>

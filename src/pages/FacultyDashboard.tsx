@@ -3,7 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { 
   Database, FileText, Award, TrendingUp, Plus, 
   Search, Upload, Calendar, Clock, AlertCircle, FileSpreadsheet, Check, X,
-  Users, CheckCircle, BookOpen, Download, ArrowUpRight, Printer
+  Users, CheckCircle, BookOpen, Download, ArrowUpRight, Printer, Edit, Trash2
 } from 'lucide-react';
 import { 
   ResponsiveContainer, BarChart, Bar, XAxis, YAxis, 
@@ -149,6 +149,18 @@ export const FacultyDashboard: React.FC = () => {
   const [examNegativeMarks, setExamNegativeMarks] = useState<number>(0.25);
   const [examQuestionsSelected, setExamQuestionsSelected] = useState<string[]>([]);
   const [examGradingThresholds, setExamGradingThresholds] = useState<GradingThresholdItem[]>(DEFAULT_GRADING_TIERS);
+
+  // Edit Exam form states
+  const [showEditExamModal, setShowEditExamModal] = useState<boolean>(false);
+  const [editingExam, setEditingExam] = useState<any | null>(null);
+  const [editExamTitle, setEditExamTitle] = useState<string>('');
+  const [editExamDesc, setEditExamDesc] = useState<string>('');
+  const [editExamStart, setEditExamStart] = useState<string>('');
+  const [editExamEnd, setEditExamEnd] = useState<string>('');
+  const [editExamDuration, setEditExamDuration] = useState<number>(30);
+  const [editExamQuestionCount, setEditExamQuestionCount] = useState<number>(10);
+  const [editExamTargetYears, setEditExamTargetYears] = useState<string[]>(['all']);
+  const [updatingExam, setUpdatingExam] = useState<boolean>(false);
 
   // Departments and Courses States
   const [departments, setDepartments] = useState<any[]>([]);
@@ -783,6 +795,71 @@ export const FacultyDashboard: React.FC = () => {
     }
   };
 
+  const formatDatetimeLocal = (dateStr?: string | Date) => {
+    if (!dateStr) return '';
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return '';
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  };
+
+  const handleEditExamClick = (exam: any) => {
+    setEditingExam(exam);
+    setEditExamTitle(exam.title || '');
+    setEditExamDesc(exam.description || '');
+    setEditExamStart(formatDatetimeLocal(exam.startTime));
+    setEditExamEnd(formatDatetimeLocal(exam.endTime));
+    setEditExamDuration(exam.duration || 30);
+    setEditExamQuestionCount(exam.questionCount || (exam.questions ? exam.questions.length : 10));
+    const targetYears = exam.targetYears || (exam.targetYear ? [String(exam.targetYear)] : ['all']);
+    setEditExamTargetYears(targetYears);
+    setShowEditExamModal(true);
+  };
+
+  const handleUpdateExamSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingExam) return;
+    setUpdatingExam(true);
+
+    const startIso = editExamStart ? new Date(editExamStart).toISOString() : new Date().toISOString();
+    const endIso = editExamEnd ? new Date(editExamEnd).toISOString() : new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+
+    try {
+      await api.put(`/faculty/exams/${editingExam.id}`, {
+        title: editExamTitle,
+        description: editExamDesc,
+        startTime: startIso,
+        endTime: endIso,
+        duration: editExamDuration,
+        questionCount: editExamQuestionCount,
+        targetYears: editExamTargetYears,
+        targetYear: editExamTargetYears.includes('all') ? null : parseInt(editExamTargetYears[0])
+      });
+      showToast('Exam updated successfully.', 'success');
+      setShowEditExamModal(false);
+      fetchData();
+    } catch (err: any) {
+      console.error('Error updating exam:', err);
+      showToast(err.response?.data?.message || 'Error updating exam.', 'error');
+    } finally {
+      setUpdatingExam(false);
+    }
+  };
+
+  const handleDeleteExam = async (examId: string) => {
+    if (!window.confirm('Are you sure you want to delete this exam? This action is permanent and will delete all student records and configurations linked to this exam.')) {
+      return;
+    }
+    try {
+      await api.delete(`/faculty/exams/${examId}`);
+      showToast('Exam deleted successfully.', 'success');
+      fetchData();
+    } catch (err: any) {
+      console.error('Error deleting exam:', err);
+      showToast(err.response?.data?.message || 'Failed to delete exam.', 'error');
+    }
+  };
+
   const handleApproveStudent = async (id: string) => {
     setApprovingIds(prev => [...prev, id]);
     try {
@@ -1129,6 +1206,22 @@ export const FacultyDashboard: React.FC = () => {
                             style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                           >
                             <Download size={13} /> Download Report
+                          </button>
+                          <button
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => handleEditExamClick(e)}
+                            title="Edit Exam"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                          >
+                            <Edit size={13} /> Edit
+                          </button>
+                          <button
+                            className="btn btn-danger btn-sm"
+                            onClick={() => handleDeleteExam(e.id)}
+                            title="Delete Exam"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', backgroundColor: 'var(--danger)', borderColor: 'var(--danger)', color: '#fff' }}
+                          >
+                            <Trash2 size={13} /> Delete
                           </button>
                         </div>
                       </td>
@@ -2053,6 +2146,164 @@ export const FacultyDashboard: React.FC = () => {
               <div className="modal-footer">
                 <button type="button" className="btn btn-secondary" onClick={() => setShowExamModal(false)}>Cancel</button>
                 <button type="submit" className="btn btn-primary">Schedule Exam</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Exam Modal */}
+      {showEditExamModal && (
+        <div className="modal-overlay" onClick={() => setShowEditExamModal(false)}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
+            <form onSubmit={handleUpdateExamSubmit}>
+              <div className="modal-header">
+                <h3 className="modal-title">Edit Scheduled Exam</h3>
+                <button type="button" className="modal-close" onClick={() => setShowEditExamModal(false)}>&times;</button>
+              </div>
+              <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div className="form-group">
+                  <label className="form-label">Exam Title</label>
+                  <input
+                    type="text"
+                    required
+                    className="form-control"
+                    value={editExamTitle}
+                    onChange={e => setEditExamTitle(e.target.value)}
+                  />
+                </div>
+                
+                <div className="form-group">
+                  <label className="form-label">Instructions / Description (Optional)</label>
+                  <textarea
+                    className="form-control"
+                    value={editExamDesc}
+                    onChange={e => setEditExamDesc(e.target.value)}
+                    style={{ height: '60px', resize: 'vertical' }}
+                  />
+                </div>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div className="form-group">
+                    <label className="form-label">Start Date & Time</label>
+                    <input
+                      type="datetime-local"
+                      required
+                      className="form-control"
+                      value={editExamStart}
+                      onChange={e => setEditExamStart(e.target.value)}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">End Date & Time</label>
+                    <input
+                      type="datetime-local"
+                      required
+                      className="form-control"
+                      value={editExamEnd}
+                      onChange={e => setEditExamEnd(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div className="form-group">
+                    <label className="form-label">Duration (Minutes)</label>
+                    <input
+                      type="number"
+                      min={5}
+                      max={180}
+                      required
+                      className="form-control"
+                      value={editExamDuration}
+                      onChange={e => setEditExamDuration(Number(e.target.value))}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label className="form-label">Number of Questions (Per Student)</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={Math.max(100, questions.length || 100)}
+                      required
+                      className="form-control"
+                      value={editExamQuestionCount}
+                      onChange={e => setEditExamQuestionCount(Number(e.target.value))}
+                      placeholder="e.g. 10"
+                    />
+                    <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                      Randomly drawn from the question pool for each candidate
+                    </span>
+                  </div>
+                </div>
+
+                {/* Edit Target Academic Year */}
+                <div className="form-group">
+                  <label className="form-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span>Target Academic Year (Eligibility)</span>
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--primary)' }}>
+                      {editExamTargetYears.includes('all') ? 'All Years (1st - 4th)' : `Years: ${editExamTargetYears.map(y => `Year ${y}`).join(', ')}`}
+                    </span>
+                  </label>
+                  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                    <button
+                      type="button"
+                      onClick={() => setEditExamTargetYears(['all'])}
+                      style={{
+                        padding: '6px 14px',
+                        borderRadius: '6px',
+                        border: '1px solid var(--border)',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        background: editExamTargetYears.includes('all') ? 'var(--primary)' : 'var(--bg-card)',
+                        color: editExamTargetYears.includes('all') ? '#fff' : 'var(--text-main)'
+                      }}
+                    >
+                      All Years (1 - 4)
+                    </button>
+                    {[1, 2, 3, 4].map(yr => {
+                      const yrStr = String(yr);
+                      const isSelected = !editExamTargetYears.includes('all') && editExamTargetYears.includes(yrStr);
+                      return (
+                        <button
+                          key={yr}
+                          type="button"
+                          onClick={() => {
+                            if (editExamTargetYears.includes('all')) {
+                              setEditExamTargetYears([yrStr]);
+                            } else if (isSelected) {
+                              const next = editExamTargetYears.filter(y => y !== yrStr);
+                              setEditExamTargetYears(next.length === 0 ? ['all'] : next);
+                            } else {
+                              setEditExamTargetYears([...editExamTargetYears, yrStr]);
+                            }
+                          }}
+                          style={{
+                            padding: '6px 14px',
+                            borderRadius: '6px',
+                            border: isSelected ? '2px solid var(--primary)' : '1px solid var(--border)',
+                            fontSize: '12px',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                            background: isSelected ? 'var(--selected)' : 'var(--bg-card)',
+                            color: isSelected ? 'var(--primary)' : 'var(--text-main)'
+                          }}
+                        >
+                          Year {yr}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+              </div>
+              <div className="modal-footer">
+                <button type="button" className="btn btn-secondary" onClick={() => setShowEditExamModal(false)}>Cancel</button>
+                <button type="submit" disabled={updatingExam} className="btn btn-primary">
+                  {updatingExam ? 'Saving...' : 'Save Changes'}
+                </button>
               </div>
             </form>
           </div>
