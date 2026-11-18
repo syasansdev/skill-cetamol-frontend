@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../contexts/ToastContext';
 import { useTheme } from '../contexts/ThemeContext';
-import { Lock, Mail, User, BookOpen, GraduationCap, CheckCircle, Shield, Eye, EyeOff, Sun, Moon, Search } from 'lucide-react';
+import { Lock, Mail, User, BookOpen, GraduationCap, CheckCircle, Shield, Eye, EyeOff, Sun, Moon, Search, RefreshCw } from 'lucide-react';
 import api from '../services/api';
 import { 
   ENGINEERING_COURSES, 
@@ -26,6 +26,8 @@ export const Login: React.FC = () => {
   
   // Student registration details
   const [colleges, setColleges] = useState<any[]>([]);
+  const [loadingColleges, setLoadingColleges] = useState<boolean>(false);
+  const [collegeFetchError, setCollegeFetchError] = useState<string | null>(null);
   const [departments, setDepartments] = useState<any[]>([]);
   const [courses, setCourses] = useState<any[]>([]);
   const [selectedCollegeId, setSelectedCollegeId] = useState<string>('');
@@ -58,7 +60,9 @@ export const Login: React.FC = () => {
   // Available colleges filtered by the selected stream / category, showing all valid colleges if not selected yet
   const availableColleges = useMemo(() => {
     if (!selectedCategory) return colleges;
-    return getCollegesByCategory(colleges, selectedCategory);
+    const catColleges = getCollegesByCategory(colleges, selectedCategory);
+    // If category filtering returned 0 colleges, fall back to all colleges so student is never stuck
+    return catColleges.length > 0 ? catColleges : colleges;
   }, [colleges, selectedCategory]);
 
   const filteredColleges = useMemo(() => {
@@ -86,28 +90,40 @@ export const Login: React.FC = () => {
     return availableCourses.filter(c => c.toLowerCase().includes(term));
   }, [availableCourses, courseSearchTerm]);
 
-  useEffect(() => {
-    const fetchAcademicData = async () => {
-      try {
-        const metaRes = await api.get('/auth/academic-metadata');
-        if (metaRes.data) {
-          const rawCols = metaRes.data.colleges || [];
-          const colList = filterValidColleges(rawCols);
-          const deptList = metaRes.data.departments || [];
-          const crsList = metaRes.data.courses || [];
-          
-          setColleges(colList);
-          setDepartments(deptList);
-          setCourses(crsList);
-        }
-      } catch (err) {
-        console.error('Failed to load academic data for registration dropdowns:', err);
+  const fetchAcademicData = async () => {
+    setLoadingColleges(true);
+    setCollegeFetchError(null);
+    try {
+      const metaRes = await api.get('/auth/academic-metadata');
+      if (metaRes.data) {
+        const rawCols = metaRes.data.colleges || [];
+        const colList = filterValidColleges(rawCols);
+        const deptList = metaRes.data.departments || [];
+        const crsList = metaRes.data.courses || [];
+        
+        setColleges(colList);
+        setDepartments(deptList);
+        setCourses(crsList);
       }
-    };
-    if (!isLogin) {
+    } catch (err: any) {
+      console.error('Failed to load academic data for registration dropdowns:', err);
+      setCollegeFetchError('Could not load college list from server. Please check connection and click retry.');
+    } finally {
+      setLoadingColleges(false);
+    }
+  };
+
+  // Pre-fetch academic data immediately on mount so colleges are ready as soon as user opens page
+  useEffect(() => {
+    fetchAcademicData();
+  }, []);
+
+  // Also ensure fresh fetch when switching to register view
+  useEffect(() => {
+    if (!isLogin && colleges.length === 0) {
       fetchAcademicData();
     }
-  }, [isLogin]);
+  }, [isLogin, colleges.length]);
 
   // Reset college selection only if category changes and the selected college belongs strictly to the other category
   useEffect(() => {
@@ -754,18 +770,35 @@ export const Login: React.FC = () => {
                 </div>
 
                 <div className="form-group">
-                  <label className="form-label">College / Institution</label>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                    <label className="form-label" style={{ margin: 0 }}>College / Institution *</label>
+                    {loadingColleges && (
+                      <span style={{ fontSize: '11px', color: 'var(--primary)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                        <RefreshCw size={11} className="animate-spin" /> Loading colleges...
+                      </span>
+                    )}
+                  </div>
                   
                   <div style={{ position: 'relative', marginBottom: '8px' }}>
                     <Search size={14} style={{ position: 'absolute', left: '10px', top: '10px', color: 'var(--text-muted)' }} />
                     <input
                       type="text"
                       className="form-control"
-                      style={{ paddingLeft: '32px', fontSize: '12px', height: '34px' }}
+                      style={{ paddingLeft: '32px', paddingRight: '28px', fontSize: '12px', height: '34px' }}
                       placeholder={selectedCategory ? `Quick search ${selectedCategory} colleges...` : "Quick search all colleges..."}
                       value={collegeSearchTerm}
                       onChange={(e) => setCollegeSearchTerm(e.target.value)}
                     />
+                    {collegeSearchTerm && (
+                      <button
+                        type="button"
+                        onClick={() => setCollegeSearchTerm('')}
+                        style={{ position: 'absolute', right: '10px', top: '8px', background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '12px' }}
+                        title="Clear search"
+                      >
+                        ✕
+                      </button>
+                    )}
                   </div>
 
                   <select
@@ -773,11 +806,14 @@ export const Login: React.FC = () => {
                     required
                     value={selectedCollegeId}
                     onChange={(e) => handleCollegeSelect(e.target.value)}
+                    disabled={loadingColleges}
                   >
                     <option value="">
-                      {selectedCategory 
-                        ? `-- Select ${selectedCategory} College / Institution (${filteredColleges.length} Available) --` 
-                        : `-- Select College / Institution (${filteredColleges.length} Available) --`}
+                      {loadingColleges
+                        ? '⏳ Loading colleges from server... please wait'
+                        : selectedCategory 
+                          ? `-- Select ${selectedCategory} College / Institution (${filteredColleges.length} Available) --` 
+                          : `-- Select College / Institution (${filteredColleges.length} Available) --`}
                     </option>
                     {filteredColleges.map((c) => (
                       <option key={c.id} value={c.id}>
@@ -785,6 +821,34 @@ export const Login: React.FC = () => {
                       </option>
                     ))}
                   </select>
+
+                  {/* Network / Error / Fallback Prompts */}
+                  {collegeFetchError && (
+                    <div style={{ marginTop: '6px', padding: '6px 10px', background: 'rgba(239, 68, 68, 0.1)', border: '1px solid var(--danger)', borderRadius: '6px', fontSize: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                      <span style={{ color: 'var(--danger)' }}>{collegeFetchError}</span>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        style={{ padding: '2px 8px', fontSize: '11px', whiteSpace: 'nowrap' }}
+                        onClick={fetchAcademicData}
+                      >
+                        <RefreshCw size={11} style={{ marginRight: '4px' }} /> Retry
+                      </button>
+                    </div>
+                  )}
+
+                  {collegeSearchTerm && filteredColleges.length === 0 && !loadingColleges && (
+                    <div style={{ marginTop: '6px', fontSize: '12px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                      <span>No colleges matching "{collegeSearchTerm}"</span>
+                      <button
+                        type="button"
+                        style={{ background: 'none', border: 'none', color: 'var(--primary)', cursor: 'pointer', textDecoration: 'underline', fontSize: '12px' }}
+                        onClick={() => setCollegeSearchTerm('')}
+                      >
+                        Show all {availableColleges.length} colleges
+                      </button>
+                    </div>
+                  )}
 
                   {selectedCollege ? (
                     <span style={{ fontSize: '12px', color: '#10b981', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
