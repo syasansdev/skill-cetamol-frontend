@@ -1630,7 +1630,7 @@ export const AdminDashboard: React.FC = () => {
           {/* Subjects */}
           <div className="card">
             <div className="table-header-controls">
-              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Subjects</h3>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: 600 }}>Subjects ({subjects.length})</h3>
               <button className="btn btn-primary btn-sm" onClick={() => setShowSubjectModal(true)}>
                 <Plus size={14} /> Add Subject
               </button>
@@ -1642,17 +1642,29 @@ export const AdminDashboard: React.FC = () => {
                     <th>Subject Code</th>
                     <th>Subject Name</th>
                     <th>Course Program</th>
+                    <th>Questions</th>
                     <th style={{ textAlign: 'right' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {subjects.map(s => {
                     const crs = courses.find(c => c.id === s.courseId);
+                    const qCount = questions.filter(q => q.subjectId === s.id).length;
                     return (
                       <tr key={s.id}>
                         <td><code>{s.code}</code></td>
-                        <td style={{ fontWeight: 600 }}>{s.name}</td>
+                        <td style={{ fontWeight: 600 }}>
+                          {s.name}
+                          <span className="badge badge-info" style={{ marginLeft: '8px', fontSize: '11px' }}>
+                            {qCount}
+                          </span>
+                        </td>
                         <td>{crs ? crs.name : 'Unknown'}</td>
+                        <td>
+                          <span style={{ fontSize: '13px', fontWeight: 500, color: qCount > 0 ? 'var(--text-main)' : 'var(--text-muted)' }}>
+                            {qCount} question{qCount !== 1 ? 's' : ''}
+                          </span>
+                        </td>
                         <td style={{ textAlign: 'right' }}>
                           <button
                             className="btn btn-secondary btn-sm"
@@ -1793,8 +1805,15 @@ export const AdminDashboard: React.FC = () => {
                 value={selectedSubjectFilter}
                 onChange={(e) => setSelectedSubjectFilter(e.target.value)}
               >
-                <option value="">All Subjects</option>
-                {subjects.map(s => <option key={s.id} value={s.id}>{s.name} ({s.code})</option>)}
+                <option value="">All Subjects ({questions.length})</option>
+                {subjects.map(s => {
+                  const count = questions.filter(q => q.subjectId === s.id).length;
+                  return (
+                    <option key={s.id} value={s.id}>
+                      {s.name} ({s.code}) ({count})
+                    </option>
+                  );
+                })}
               </select>
               {selectedSubjectFilter && (
                 <button
