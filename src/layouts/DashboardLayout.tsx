@@ -8,7 +8,7 @@ import {
   FileText, Database, TrendingUp, Settings, 
   LogOut, ChevronLeft, ChevronRight, Bell, 
   User, Award, HelpCircle, ShieldAlert, Server, Clock,
-  Sun, Moon, Upload
+  Sun, Moon, Upload, Menu, X
 } from 'lucide-react';
 import { Breadcrumb, BreadcrumbItem } from '../components/Breadcrumb';
 
@@ -16,9 +16,15 @@ export const DashboardLayout: React.FC = () => {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const [collapsed, setCollapsed] = useState<boolean>(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState<boolean>(false);
   const [showNotifications, setShowNotifications] = useState<boolean>(false);
   const location = useLocation();
   const navigate = useNavigate();
+
+  // Close mobile sidebar on route or tab change
+  useEffect(() => {
+    setMobileSidebarOpen(false);
+  }, [location.pathname, location.search]);
 
   // Helper to parse query parameters
   const queryParams = new URLSearchParams(location.search);
@@ -72,6 +78,7 @@ export const DashboardLayout: React.FC = () => {
   const links = getSidebarLinks();
 
   const handleLinkClick = (tab: string) => {
+    setMobileSidebarOpen(false);
     navigate(`/${user.role}/dashboard?tab=${tab}`);
   };
 
@@ -148,8 +155,17 @@ export const DashboardLayout: React.FC = () => {
 
   return (
     <div className="app-container">
+      {/* Mobile Drawer Backdrop */}
+      {mobileSidebarOpen && (
+        <div 
+          className="mobile-sidebar-backdrop" 
+          onClick={() => setMobileSidebarOpen(false)} 
+          aria-hidden="true"
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`}>
+      <aside className={`sidebar ${collapsed ? 'collapsed' : ''} ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
         <div className="sidebar-header">
           {!collapsed && (
             <div className="sidebar-brand">
@@ -217,7 +233,17 @@ export const DashboardLayout: React.FC = () => {
       {/* Main Content wrapper */}
       <div className="main-wrapper">
         <header className="top-nav">
-          <Breadcrumb items={getBreadcrumbs()} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0, overflow: 'hidden' }}>
+            <button 
+              className="mobile-hamburger-btn" 
+              onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+              aria-label="Toggle navigation menu"
+              title="Toggle Menu"
+            >
+              {mobileSidebarOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+            <Breadcrumb items={getBreadcrumbs()} />
+          </div>
 
           <div className="top-nav-actions">
             {/* Theme Toggle */}

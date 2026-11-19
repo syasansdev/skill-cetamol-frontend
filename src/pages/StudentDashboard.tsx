@@ -1240,7 +1240,14 @@ export const StudentDashboard: React.FC = () => {
                 <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
                   <div style={{ color: 'var(--danger)', paddingTop: '2px' }}><ShieldAlert size={16} /></div>
                   <div>
-                    <strong>Proctor locks:</strong> System will enforce **strict full screen**. Minimizing or navigating away from the page will trigger an alert check.
+                    <strong>Mobile &amp; App Switch Lock:</strong> On mobile phones, switching tabs, pressing Home, or opening Recent Apps (App Switcher) will <strong>immediately terminate &amp; permanently lock</strong> your exam session without warning chances.
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                  <div style={{ color: 'var(--danger)', paddingTop: '2px' }}><ShieldAlert size={16} /></div>
+                  <div>
+                    <strong>Desktop Proctor locks:</strong> On desktop browsers, system enforces strict full screen. Leaving or minimizing the window triggers warning strikes (locked on 3rd warning).
                   </div>
                 </div>
 

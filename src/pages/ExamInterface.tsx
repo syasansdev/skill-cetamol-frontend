@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useExam } from '../contexts/ExamContext';
 import { useToast } from '../contexts/ToastContext';
@@ -6,7 +6,8 @@ import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import { 
   ShieldAlert, Maximize2, Minimize2, ChevronLeft, 
-  ChevronRight, Save, Bookmark, AlertCircle, FileText, CheckCircle2
+  ChevronRight, Save, Bookmark, AlertCircle, FileText, CheckCircle2,
+  Clock, ListOrdered
 } from 'lucide-react';
 
 export const ExamInterface: React.FC = () => {
@@ -38,10 +39,32 @@ export const ExamInterface: React.FC = () => {
   const [showSubmitConfirm, setShowSubmitConfirm] = useState<boolean>(false);
   const [submitting, setSubmitting] = useState<boolean>(false);
 
+  // Mobile detection helper
+  const isMobileDevice = () => {
+    if (typeof window === 'undefined') return false;
+    const ua = navigator.userAgent || navigator.vendor || (window as any).opera || '';
+    const isMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|mobile|CriOS/i.test(ua);
+    const isTouchScreen = ('ontouchstart' in window) || navigator.maxTouchPoints > 0;
+    const isSmallScreen = window.innerWidth <= 820;
+    return isMobileUA || (isTouchScreen && isSmallScreen);
+  };
+
+  const [isMobile, setIsMobile] = useState<boolean>(() => isMobileDevice());
+  const [showMobilePalette, setShowMobilePalette] = useState<boolean>(false);
+  const isLockingRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(isMobileDevice());
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   // Proctor extension states
   const [localWarningCount, setLocalWarningCount] = useState<number>((activeExam as any)?.warningCount || 0);
   const [showWarningModal, setShowWarningModal] = useState<boolean>(false);
-  const [isLocked, setIsLocked] = useState<boolean>((activeExam as any)?.attemptStatus === 'LOCKED');
+  const [isLocked, setIsLocked] = useState<boolean>((activeExam as any)?.attemptStatus === 'LOCKED' || (activeExam as any)?.status === 'LOCKED');
   const [isReady, setIsReady] = useState<boolean>(false);
   const [loadingExam, setLoadingExam] = useState<boolean>(!activeExam && !!examId);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -109,11 +132,35 @@ export const ExamInterface: React.FC = () => {
     }
   }, [isExamActive, loadingExam, activeExam, examId]);
 
-  // Tab switch, minimize, blur detector
+  // Tab switch, minimize, blur detector (Immediate lock on Mobile, 3 Warnings on Desktop)
   useEffect(() => {
     if (!activeExam || isLocked || !isReady || !isExamActive) return;
 
+    const handleMobileImmediateLock = async (reason: string) => {
+      if (isLocked || isLockingRef.current) return;
+      isLockingRef.current = true;
+      setIsLocked(true);
+      setShowWarningModal(false);
+
+      try {
+        await api.post(`/student/exams/${activeExam.id}/proctor-event`, {
+          eventType: 'mobile_tab_or_app_switch',
+          warningCount: 3,
+          isImmediateLock: true,
+          details: reason
+        });
+        showToast('Exam locked: Mobile tab switch, Home, or Recents button pressed.', 'error');
+      } catch (err) {
+        console.error('Failed locking exam on mobile violation:', err);
+      }
+    };
+
     const handleFocusLoss = async () => {
+      if (isMobile) {
+        handleMobileImmediateLock('Mobile focus loss / blur / recents menu');
+        return;
+      }
+
       if (showWarningModal || isLocked) return;
 
       const nextWarning = localWarningCount + 1;
@@ -155,23 +202,52 @@ export const ExamInterface: React.FC = () => {
     };
 
     const handleVisibility = () => {
-      if (document.hidden) {
-        handleFocusLoss();
+      if (document.hidden || document.visibilityState === 'hidden') {
+        if (isMobile) {
+          handleMobileImmediateLock('Mobile visibility hidden: tab switched, home, or recents button pressed');
+        } else {
+          handleFocusLoss();
+        }
+      }
+    };
+
+    const handlePageHide = () => {
+      if (isMobile) {
+        handleMobileImmediateLock('Mobile pagehide: navigated away or browser minimized');
       }
     };
 
     const handleWindowBlur = () => {
-      handleFocusLoss();
+      if (isMobile) {
+        // Debounce slightly to ensure not a virtual keyboard tap
+        setTimeout(() => {
+          if (document.hidden || !document.hasFocus()) {
+            handleMobileImmediateLock('Mobile window blur: switched out of exam interface');
+          }
+        }, 150);
+      } else {
+        handleFocusLoss();
+      }
+    };
+
+    const handleFreeze = () => {
+      if (isMobile) {
+        handleMobileImmediateLock('Mobile page freeze: app placed in background');
+      }
     };
 
     document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('pagehide', handlePageHide);
     window.addEventListener('blur', handleWindowBlur);
+    document.addEventListener('freeze', handleFreeze);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('pagehide', handlePageHide);
       window.removeEventListener('blur', handleWindowBlur);
+      document.removeEventListener('freeze', handleFreeze);
     };
-  }, [localWarningCount, showWarningModal, isLocked, activeExam, isReady, isExamActive]);
+  }, [localWarningCount, showWarningModal, isLocked, activeExam, isReady, isExamActive, isMobile]);
 
   // Hardened Anti-Copy, Anti-Paste, Anti-Extension, and Anti-Cheating Security System
   useEffect(() => {
@@ -723,17 +799,26 @@ export const ExamInterface: React.FC = () => {
       {/* Exam Header */}
       <header className="exam-header">
         <div className="exam-title-section">
-          <img src="/logo.jpeg" alt="Logo" style={{ width: '32px', height: '32px', borderRadius: '4px' }} />
-          <div>
-            <h2 className="exam-title-text">{activeExam.title}</h2>
-            <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Proctored Evaluation Portal &bull; Candidate: {user?.name}</span>
+          <img src="/logo.jpeg" alt="Logo" style={{ width: '32px', height: '32px', borderRadius: '4px', flexShrink: 0 }} />
+          <div style={{ minWidth: 0 }}>
+            <h2 className="exam-title-text" style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {activeExam.title}
+            </h2>
+            <span className="exam-candidate-subtitle" style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+              Proctored Evaluation Portal &bull; Candidate: {user?.name}
+            </span>
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+        <div className="exam-header-actions" style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <div className={`exam-header-timer ${isTimeWarning ? 'warning-time' : ''}`}>
+            <Clock size={14} />
+            <span>{formatTimer(timeRemaining)}</span>
+          </div>
+
           <button className="btn btn-secondary btn-sm" onClick={toggleFullscreen} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
             {isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-            {isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+            <span className="btn-label-desktop">{isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}</span>
           </button>
           
           <button className="btn btn-danger btn-sm" onClick={() => {
@@ -747,9 +832,43 @@ export const ExamInterface: React.FC = () => {
         </div>
       </header>
 
+      {/* Mobile Sticky Sub-bar */}
+      <div className="exam-mobile-subbar">
+        <div className="mobile-subbar-info">
+          <span className={`mobile-timer-pill ${isTimeWarning ? 'warning-time' : ''}`}>
+            <Clock size={13} />
+            {formatTimer(timeRemaining)}
+          </span>
+          <span className="mobile-q-indicator">
+            Q {currentQuestionIndex + 1}/{totalQuestions}
+          </span>
+        </div>
+
+        <div className="mobile-subbar-actions">
+          <button 
+            type="button" 
+            className="btn btn-secondary btn-sm"
+            onClick={() => setShowMobilePalette(true)}
+            style={{ display: 'flex', alignItems: 'center', gap: '5px', padding: '6px 10px', fontSize: '13px' }}
+          >
+            <ListOrdered size={14} />
+            <span>Palette ({answeredCount}/{totalQuestions})</span>
+          </button>
+          
+          <button 
+            type="button" 
+            className="btn btn-primary btn-sm"
+            onClick={() => setShowSubmitConfirm(true)}
+            style={{ backgroundColor: 'var(--success)', padding: '6px 12px', fontSize: '13px' }}
+          >
+            Submit
+          </button>
+        </div>
+      </div>
+
       {/* Main examination area */}
       <div className="exam-main">
-        {/* Left Panel: Palette navigation */}
+        {/* Left Panel: Palette navigation (Desktop) */}
         <aside className="exam-left-panel">
           <div className="exam-panel-title">Question Navigator</div>
           <div className="question-palette-grid">
@@ -793,6 +912,14 @@ export const ExamInterface: React.FC = () => {
 
         {/* Center Panel: Current Question */}
         <main className="exam-center-panel">
+          {isMobile && (
+            <div className="mobile-proctor-banner">
+              <ShieldAlert size={16} style={{ color: 'var(--danger)', flexShrink: 0 }} />
+              <span>
+                <strong>Mobile Proctor Active:</strong> Switching tabs, pressing Home, or opening Recent Apps will <strong>immediately terminate &amp; lock</strong> your exam.
+              </span>
+            </div>
+          )}
           <div className="question-card">
             <div className="question-header">
               <span className="question-number-tag">Question {currentQuestionIndex + 1} of {totalQuestions}</span>
@@ -1038,7 +1165,71 @@ export const ExamInterface: React.FC = () => {
         </div>
       )}
 
-      {/* PROCTOR WARNING MODAL */}
+      {/* MOBILE QUESTION PALETTE MODAL / DRAWER */}
+      {showMobilePalette && (
+        <div className="modal-overlay" onClick={() => setShowMobilePalette(false)}>
+          <div className="modal-content mobile-palette-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 className="modal-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <ListOrdered size={18} />
+                Question Palette ({totalQuestions} Questions)
+              </h3>
+              <button className="modal-close" onClick={() => setShowMobilePalette(false)}>&times;</button>
+            </div>
+            
+            <div className="modal-body" style={{ maxHeight: '65vh', overflowY: 'auto' }}>
+              <div className="palette-legend" style={{ padding: '0 0 14px 0', border: 'none', borderBottom: '1px solid var(--border)' }}>
+                <div className="legend-item">
+                  <span className="legend-color" style={{ backgroundColor: 'var(--success-bg)', borderColor: 'var(--success)' }}></span>
+                  <span>Answered: <strong>{answeredCount}</strong></span>
+                </div>
+                <div className="legend-item">
+                  <span className="legend-color" style={{ backgroundColor: 'var(--warning-bg)', borderColor: 'var(--warning)' }}></span>
+                  <span>Review: <strong>{markedForReview.length}</strong></span>
+                </div>
+                <div className="legend-item">
+                  <span className="legend-color" style={{ backgroundColor: 'var(--hover)' }}></span>
+                  <span>Unanswered: <strong>{remainingCount}</strong></span>
+                </div>
+              </div>
+
+              <div className="question-palette-grid" style={{ padding: '14px 0' }}>
+                {activeExam.questions.map((q, idx) => {
+                  const isActive = idx === currentQuestionIndex;
+                  const ans = answers[q.id];
+                  const isAnswered = ans !== undefined && ans !== '' && (!Array.isArray(ans) || ans.length > 0);
+                  const isMarked = markedForReview.includes(q.id);
+
+                  let statusClass = 'unvisited';
+                  if (isAnswered) statusClass = 'answered';
+                  else if (isMarked) statusClass = 'marked';
+
+                  return (
+                    <button
+                      key={q.id}
+                      onClick={() => {
+                        jumpToQuestion(idx);
+                        setShowMobilePalette(false);
+                      }}
+                      className={`palette-btn ${statusClass} ${isActive ? 'active' : ''}`}
+                    >
+                      {(idx + 1).toString().padStart(2, '0')}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="modal-footer">
+              <button className="btn btn-secondary" style={{ width: '100%' }} onClick={() => setShowMobilePalette(false)}>
+                Resume Question {currentQuestionIndex + 1}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PROCTOR WARNING MODAL (Desktop 3 Chances) */}
       {showWarningModal && (
         <div className="modal-overlay" style={{ zIndex: 9999 }}>
           <div className="modal-content" style={{ maxWidth: '480px', border: '1px solid var(--warning)' }} onClick={(e) => e.stopPropagation()}>
@@ -1078,15 +1269,27 @@ export const ExamInterface: React.FC = () => {
             <h2 style={{ fontSize: '22px', fontWeight: 700, color: 'var(--danger)', marginBottom: '12px' }}>
               Examination Terminated & Locked
             </h2>
-            <p style={{ fontSize: '14px', color: 'var(--text-muted)', lineHeight: '1.6', marginBottom: '24px' }}>
-              You have exceeded the maximum limit of <strong>3 malpractice warnings</strong> (tab switching / focus loss).
-              <br /><br />
-              Your exam has been automatically closed and locked. You must request approval from an <strong>Administrator</strong> before you can retake the exam with a new set of questions.
-            </p>
+            <div style={{ fontSize: '14px', color: 'var(--text-muted)', lineHeight: '1.6', marginBottom: '24px', textAlign: 'left' }}>
+              {isMobile ? (
+                <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', padding: '14px', borderRadius: 'var(--radius)', border: '1px solid var(--danger)', color: 'var(--text-main)', marginBottom: '16px' }}>
+                  <strong style={{ color: 'var(--danger)', display: 'block', marginBottom: '6px' }}>
+                    Mobile Malpractice Violation Detected
+                  </strong>
+                  You navigated away from the exam tab, pressed the <strong>Home button</strong>, or opened the <strong>Recent Apps (App Switcher)</strong> menu. Under strict proctoring rules for mobile devices, any interruption results in an <strong>immediate session lock</strong>.
+                </div>
+              ) : (
+                <p style={{ marginBottom: '16px' }}>
+                  You have exceeded the maximum limit of <strong>3 malpractice warnings</strong> (tab switching / window focus loss).
+                </p>
+              )}
+              <p>
+                Your exam has been automatically closed and locked. You must contact an <strong>Administrator or Faculty Invigilator</strong> to review proctor logs and grant re-entry approval.
+              </p>
+            </div>
             <button
               className="btn btn-primary"
               onClick={() => navigate('/student/dashboard')}
-              style={{ backgroundColor: 'var(--danger)', borderColor: 'var(--danger)' }}
+              style={{ backgroundColor: 'var(--danger)', borderColor: 'var(--danger)', width: '100%', padding: '12px' }}
             >
               Return to Dashboard
             </button>
